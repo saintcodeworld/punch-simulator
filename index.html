@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐒 Punch Simulator - Defend the Lonely Monkey!</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a0a2e;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh;
+    font-family: 'Nunito', 'Fredoka One', sans-serif;
+    overflow: hidden;
+  }
+  #gameWrapper { position: relative; width: 900px; height: 650px; }
+  canvas {
+    display: block; border-radius: 16px;
+    box-shadow: 0 0 60px rgba(255,150,50,0.3), 0 0 120px rgba(255,100,0,0.1);
+  }
+  #hud {
+    position: absolute; top: 12px; left: 16px; right: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    pointer-events: none; z-index: 10;
+  }
+  .hud-box {
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+    border: 2px solid rgba(255,200,100,0.4); border-radius: 12px;
+    padding: 6px 16px; color: #fff; font-size: 14px; font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .heart { color: #ff4466; font-size: 16px; }
+  .heart.lost { opacity: 0.25; }
+
+  /* Screens */
+  .screen-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(10,5,30,0.9); backdrop-filter: blur(6px);
+    border-radius: 16px; z-index: 20; pointer-events: all;
+  }
+  .screen-title {
+    font-family: 'Fredoka One', cursive; font-size: 48px; color: #ffcc44;
+    text-shadow: 0 4px 20px rgba(255,170,0,0.5), 0 2px 0 #cc8800;
+    margin-bottom: 8px;
+  }
+  .screen-subtitle {
+    font-size: 16px; color: #ffaa77; margin-bottom: 24px;
+    text-align: center; max-width: 520px; line-height: 1.5;
+  }
+  .btn {
+    pointer-events: all;
+    background: linear-gradient(135deg, #ff8833, #ff5500);
+    color: #fff; border: none; padding: 12px 40px; font-size: 18px;
+    font-family: 'Fredoka One', cursive; border-radius: 50px; cursor: pointer;
+    box-shadow: 0 6px 25px rgba(255,85,0,0.4); transition: all 0.2s;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .btn:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 30px rgba(255,85,0,0.6); }
+  .btn:active { transform: translateY(1px) scale(0.98); }
+  .btn-small { padding: 8px 24px; font-size: 14px; }
+  .controls-info {
+    margin-top: 20px; color: rgba(255,255,255,0.5); font-size: 12px;
+    text-align: center; line-height: 1.8;
+  }
+  .controls-info kbd {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 5px; padding: 2px 7px; font-family: inherit; font-size: 11px;
+  }
+  .punch-ascii { font-size: 64px; margin-bottom: 8px; }
+  .score-display { font-size: 32px; color: #ffcc44; font-family: 'Fredoka One', cursive; margin: 8px 0; }
+  .level-info { font-size: 20px; color: #fff; margin: 8px 0 16px; }
+  .hidden { display: none !important; }
+
+  #comboPopup {
+    position: absolute; pointer-events: none;
+    font-family: 'Fredoka One', cursive; font-size: 28px; color: #ffee00;
+    text-shadow: 0 2px 8px rgba(255,200,0,0.6), 0 0 20px rgba(255,150,0,0.4);
+    z-index: 15; opacity: 0; transition: opacity 0.3s;
+  }
+
+  /* Upgrade Shop */
+  #upgradeScreen .upgrade-cards {
+    display: flex; gap: 20px; margin: 20px 0;
+  }
+  .upgrade-card {
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,200,100,0.3);
+    border-radius: 16px; padding: 20px 16px; width: 200px; text-align: center;
+    cursor: pointer; transition: all 0.25s; pointer-events: all;
+  }
+  .upgrade-card:hover {
+    transform: translateY(-8px) scale(1.05);
+    border-color: #ffaa33; background: rgba(255,200,100,0.12);
+    box-shadow: 0 8px 30px rgba(255,150,0,0.3);
+  }
+  .upgrade-card .icon { font-size: 40px; margin-bottom: 8px; }
+  .upgrade-card .name { font-family: 'Fredoka One', cursive; font-size: 16px; color: #ffcc44; margin-bottom: 6px; }
+  .upgrade-card .desc { font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4; }
+
+  /* High Scores */
+  .highscore-list {
+    margin: 10px 0; text-align: left; font-size: 14px; color: #ddd;
+  }
+  .highscore-list .hs-row {
+    display: flex; justify-content: space-between; gap: 20px;
+    padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .highscore-list .hs-rank { color: #ffcc44; width: 24px; }
+  .highscore-list .hs-score { color: #ffaa33; font-family: 'Fredoka One', cursive; }
+  .highscore-list .hs-wave { color: rgba(255,255,255,0.5); font-size: 12px; }
+
+  /* Achievements */
+  .achievements-row {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; justify-content: center; max-width: 600px;
+  }
+  .achievement-badge {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; padding: 4px 10px; font-size: 11px; color: rgba(255,255,255,0.4);
+  }
+  .achievement-badge.unlocked {
+    background: rgba(255,200,50,0.15); border-color: rgba(255,200,50,0.5);
+    color: #ffdd66;
+  }
+  .achievement-badge .ach-icon { margin-right: 4px; }
+
+  /* Sound toggle */
+  #soundToggle {
+    position: absolute; top: 48px; right: 16px; z-index: 25;
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px; padding: 4px 8px; color: #fff; cursor: pointer;
+    font-size: 16px; pointer-events: all;
+  }
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas" width="900" height="650"></canvas>
+
+  <div id="hud">
+    <div class="hud-box">⭐ <span id="scoreVal">0</span></div>
+    <div class="hud-box">📦 Wave <span id="levelVal">1</span></div>
+    <div class="hud-box">🔥 x<span id="comboVal">0</span></div>
+    <div class="hud-box" id="livesBox"></div>
+  </div>
+  <div id="soundToggle" title="Toggle Sound">🔊</div>
+  <div id="comboPopup"></div>
+
+  <!-- START SCREEN -->
+  <div id="startScreen" class="screen-overlay">
+    <div class="punch-ascii">🐵</div>
+    <div class="screen-title">Punch Simulator</div>
+    <div class="screen-subtitle">
+      Defend tiny Punch, the lonely baby macaque from Ichikawa Zoo!<br>
+      He's small, but he's got his orangutan plushie and a big heart.<br>
+      The adult monkeys are huge bullies — show them baby power! 💪<br>
+      <b>#HangInTherePunch</b> 🧡
+    </div>
+    <button class="btn" id="startBtn">Start Game</button>
+    <div class="controls-info">
+      <kbd>WASD</kbd> / <kbd>Arrows</kbd> move &amp; aim &nbsp;|&nbsp;
+      <kbd>Space</kbd> / <kbd>Click</kbd> punch &nbsp;|&nbsp;
+      <kbd>Shift</kbd> dash<br>
+      <kbd>E</kbd> plushie shield &nbsp;|&nbsp;
+      <kbd>Q</kbd> super punch &nbsp;|&nbsp;
+      <kbd>F</kbd> plushie throw<br>
+      🖱️ Move mouse to aim with cursor &nbsp;|&nbsp; ⌨️ Use keys to aim without mouse
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameOverScreen" class="screen-overlay hidden">
+    <div class="punch-ascii">😢</div>
+    <div class="screen-title" style="color:#ff6666;font-size:40px">Game Over</div>
+    <div class="screen-subtitle">The monkeys got to Punch...</div>
+    <div class="score-display">Score: <span id="finalScore">0</span></div>
+    <div class="level-info">Wave <span id="finalWave">1</span> | Max Combo: <span id="finalCombo">0</span></div>
+    <div id="newAchievements"></div>
+    <div class="highscore-list" id="highscoreList"></div>
+    <div class="achievements-row" id="achievementsList"></div>
+    <button class="btn" id="restartBtn" style="margin-top:12px">Try Again</button>
+  </div>
+
+  <!-- WAVE TRANSITION SCREEN -->
+  <div id="levelScreen" class="screen-overlay hidden">
+    <div class="screen-title" style="font-size:38px">Wave <span id="nextWaveNum">2</span></div>
+    <div class="level-info">More monkeys incoming! 🐒🐒🐒</div>
+    <div class="screen-subtitle" id="waveTip">Stay strong, Punch!</div>
+  </div>
+
+  <!-- UPGRADE SHOP SCREEN -->
+  <div id="upgradeScreen" class="screen-overlay hidden">
+    <div class="screen-title" style="font-size:32px">🛒 Choose an Upgrade!</div>
+    <div class="screen-subtitle" style="margin-bottom:8px">Wave <span id="upgradeWaveNum">1</span> cleared! Pick one boost:</div>
+    <div class="upgrade-cards" id="upgradeCards"></div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+//  PUNCH SIMULATOR v2.0 — ALL 10 FEATURES!
+// =====================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// =====================================================
+//  FEATURE 6: SOUND SYSTEM (Web Audio API)
+// =====================================================
+let audioCtx = null;
+let soundEnabled = true;
+let bgmOsc = null, bgmGain = null, bgmPlaying = false;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playSound(type) {
+  if (!audioCtx || !soundEnabled) return;
+  try {
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    let t = audioCtx.currentTime;
+
+    switch(type) {
+      case 'punch':
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t);
+        osc.frequency.exponentialRampToValueAtTime(80, t + 0.1);
+        gain.gain.setValueAtTime(0.15, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc.start(t); osc.stop(t + 0.12); break;
+      case 'hit':
+        osc.type = 'square'; osc.frequency.setValueAtTime(300, t);
+        osc.frequency.exponentialRampToValueAtTime(100, t + 0.08);
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.start(t); osc.stop(t + 0.1); break;
+      case 'kill':
+        osc.type = 'sine'; osc.frequency.setValueAtTime(400, t);
+        osc.frequency.exponentialRampToValueAtTime(800, t + 0.15);
+        gain.gain.setValueAtTime(0.1, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.start(t); osc.stop(t + 0.2); break;
+      case 'hurt':
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, t);
+        osc.frequency.exponentialRampToValueAtTime(150, t + 0.25);
+        gain.gain.setValueAtTime(0.15, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t); osc.stop(t + 0.3); break;
+      case 'dash':
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, t);
+        osc.frequency.exponentialRampToValueAtTime(1200, t + 0.08);
+        gain.gain.setValueAtTime(0.06, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.start(t); osc.stop(t + 0.1); break;
+      case 'upgrade':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523, t);
+        osc.frequency.setValueAtTime(659, t + 0.1);
+        osc.frequency.setValueAtTime(784, t + 0.2);
+        gain.gain.setValueAtTime(0.1, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        osc.start(t); osc.stop(t + 0.4); break;
+      case 'wave':
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, t);
+        osc.frequency.setValueAtTime(554, t + 0.12);
+        osc.frequency.setValueAtTime(659, t + 0.24);
+        osc.frequency.setValueAtTime(880, t + 0.36);
+        gain.gain.setValueAtTime(0.1, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+        osc.start(t); osc.stop(t + 0.5); break;
+      case 'crowd':
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(300, t);
+        osc.frequency.linearRampToValueAtTime(600, t + 0.3);
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        osc.start(t); osc.stop(t + 0.4); break;
+      case 'throw':
+        osc.type = 'sine'; osc.frequency.setValueAtTime(300, t);
+        osc.frequency.exponentialRampToValueAtTime(900, t + 0.15);
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        osc.start(t); osc.stop(t + 0.18); break;
+      case 'taunt':
+        osc.type = 'square'; osc.frequency.setValueAtTime(180, t);
+        osc.frequency.setValueAtTime(220, t + 0.1);
+        osc.frequency.setValueAtTime(180, t + 0.2);
+        gain.gain.setValueAtTime(0.06, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t); osc.stop(t + 0.3); break;
+    }
+  } catch(e) {}
+}
+
+function startBGM() {
+  if (!audioCtx || !soundEnabled || bgmPlaying) return;
+  try {
+    bgmGain = audioCtx.createGain();
+    bgmGain.gain.value = 0.03;
+    bgmGain.connect(audioCtx.destination);
+    bgmOsc = audioCtx.createOscillator();
+    bgmOsc.type = 'triangle';
+    bgmOsc.frequency.value = 220;
+    bgmOsc.connect(bgmGain);
+    bgmOsc.start();
+    bgmPlaying = true;
+    // Modulate BGM
+    function modBGM() {
+      if (!bgmPlaying || !bgmOsc) return;
+      let notes = [220,247,262,294,330,294,262,247];
+      let idx = Math.floor(game.time * 2) % notes.length;
+      bgmOsc.frequency.value = notes[idx];
+      requestAnimationFrame(modBGM);
+    }
+    modBGM();
+  } catch(e) {}
+}
+
+function stopBGM() {
+  if (bgmOsc) { try { bgmOsc.stop(); } catch(e) {} bgmOsc = null; }
+  bgmPlaying = false;
+}
+
+document.getElementById('soundToggle').addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+  if (!soundEnabled) stopBGM();
+  else if (game.state === 'playing') startBGM();
+});
+
+// =====================================================
+//  FEATURE 5: HIGH SCORE SYSTEM
+// =====================================================
+function getHighScores() {
+  try { return JSON.parse(localStorage.getItem('punchHighScores') || '[]'); } catch(e) { return []; }
+}
+function saveHighScore(score, wave, combo) {
+  let scores = getHighScores();
+  scores.push({ score: Math.floor(score), wave, combo, date: new Date().toLocaleDateString() });
+  scores.sort((a, b) => b.score - a.score);
+  scores = scores.slice(0, 5);
+  localStorage.setItem('punchHighScores', JSON.stringify(scores));
+  return scores;
+}
+function renderHighScores(containerId) {
+  let scores = getHighScores();
+  let el = document.getElementById(containerId);
+  if (!scores.length) { el.innerHTML = '<div style="color:#888;font-size:13px">No high scores yet!</div>'; return; }
+  el.innerHTML = '<div style="color:#ffcc44;font-size:13px;margin-bottom:4px;font-family:Fredoka One">🏆 High Scores</div>' +
+    scores.map((s, i) => `<div class="hs-row"><span class="hs-rank">#${i+1}</span><span class="hs-score">${s.score}</span><span class="hs-wave">W${s.wave} | x${s.combo}</span></div>`).join('');
+}
+
+// =====================================================
+//  FEATURE 9: ACHIEVEMENT SYSTEM
+// =====================================================
+const ACHIEVEMENTS = [
+  { id: 'first_blood', name: 'First Blood', icon: '🩸', desc: 'Defeat your first enemy' },
+  { id: 'wave5', name: 'Survivor', icon: '🛡️', desc: 'Reach wave 5' },
+  { id: 'wave10', name: 'Warrior', icon: '⚔️', desc: 'Reach wave 10' },
+  { id: 'combo10', name: 'Combo King', icon: '🔥', desc: 'Get a 10x combo' },
+  { id: 'combo25', name: 'Combo Legend', icon: '💥', desc: 'Get a 25x combo' },
+  { id: 'untouchable', name: 'Untouchable', icon: '✨', desc: 'Clear a wave without damage' },
+  { id: 'score5000', name: 'Rising Star', icon: '⭐', desc: 'Score 5,000 points' },
+  { id: 'score20000', name: 'Superstar', icon: '🌟', desc: 'Score 20,000 points' },
+  { id: 'dasher', name: 'Speed Demon', icon: '💨', desc: 'Dash 50 times' },
+  { id: 'plushie_master', name: 'Plushie Master', icon: '🧸', desc: 'Hit 30 enemies with plushie throw' },
+  { id: 'crowd_full', name: 'Fan Favorite', icon: '👏', desc: 'Fill the crowd meter' },
+  { id: 'boss_slayer', name: 'Boss Slayer', icon: '👑', desc: 'Defeat a boss' },
+];
+
+function getUnlockedAchievements() {
+  try { return JSON.parse(localStorage.getItem('punchAchievements') || '[]'); } catch(e) { return []; }
+}
+function unlockAchievement(id) {
+  let unlocked = getUnlockedAchievements();
+  if (unlocked.includes(id)) return false;
+  unlocked.push(id);
+  localStorage.setItem('punchAchievements', JSON.stringify(unlocked));
+  let ach = ACHIEVEMENTS.find(a => a.id === id);
+  if (ach) {
+    addFloatingText(W / 2, 80, `${ach.icon} ${ach.name} Unlocked!`, '#ffdd44', 22);
+    playSound('upgrade');
+  }
+  return true;
+}
+function checkAchievements() {
+  if (game.totalKills >= 1) unlockAchievement('first_blood');
+  if (game.wave >= 5) unlockAchievement('wave5');
+  if (game.wave >= 10) unlockAchievement('wave10');
+  if (game.maxCombo >= 10) unlockAchievement('combo10');
+  if (game.maxCombo >= 25) unlockAchievement('combo25');
+  if (game.score >= 5000) unlockAchievement('score5000');
+  if (game.score >= 20000) unlockAchievement('score20000');
+  if (game.totalDashes >= 50) unlockAchievement('dasher');
+  if (game.totalPlushieHits >= 30) unlockAchievement('plushie_master');
+  if (game.crowdMeterFilled) unlockAchievement('crowd_full');
+}
+function renderAchievements(containerId) {
+  let unlocked = getUnlockedAchievements();
+  let el = document.getElementById(containerId);
+  el.innerHTML = ACHIEVEMENTS.map(a =>
+    `<div class="achievement-badge ${unlocked.includes(a.id) ? 'unlocked' : ''}" title="${a.desc}"><span class="ach-icon">${a.icon}</span>${a.name}</div>`
+  ).join('');
+}
+
+// =====================================================
+//  FEATURE 1: UPGRADE SYSTEM
+// =====================================================
+const UPGRADE_POOL = [
+  { id: 'speed', name: 'Quick Feet', icon: '👟', desc: '+15% move speed', apply: () => { punch.speed *= 1.15; } },
+  { id: 'range', name: 'Long Arms', icon: '🦾', desc: '+12 punch range', apply: () => { punch.punchRange += 12; } },
+  { id: 'damage', name: 'Iron Fist', icon: '👊', desc: '+0.5 punch damage', apply: () => { punch.baseDamage += 0.5; punch.punchDamage = punch.baseDamage; } },
+  { id: 'life', name: 'Extra Heart', icon: '❤️', desc: '+1 max life (heals)', apply: () => { game.maxLives++; game.lives = Math.min(game.lives + 1, game.maxLives); } },
+  { id: 'shield_dur', name: 'Thick Plushie', icon: '🧸', desc: '+1s shield duration', apply: () => { game.shieldDuration += 1; } },
+  { id: 'shield_cd', name: 'Quick Cuddle', icon: '💨', desc: '-2s shield cooldown', apply: () => { game.shieldCooldownMax = Math.max(2, game.shieldCooldownMax - 2); } },
+  { id: 'arc', name: 'Wide Swing', icon: '🌀', desc: '+20° punch arc', apply: () => { punch.punchArc += 0.35; } },
+  { id: 'dash_cd', name: 'Nimble Baby', icon: '⚡', desc: '-0.3s dash cooldown', apply: () => { game.dashCooldownMax = Math.max(0.3, game.dashCooldownMax - 0.3); } },
+  { id: 'plushie_dmg', name: 'Heavy Plushie', icon: '🔨', desc: '+1 plushie throw damage', apply: () => { game.plushieDamage += 1; } },
+  { id: 'combo_bonus', name: 'Show-off', icon: '🎪', desc: '+5% combo score bonus', apply: () => { game.comboBonus += 0.05; } },
+  { id: 'crowd_rate', name: 'Crowd Pleaser', icon: '👏', desc: 'Crowd meter fills 20% faster', apply: () => { game.crowdFillRate *= 1.2; } },
+  { id: 'knockback', name: 'Power Push', icon: '💪', desc: '+30% knockback force', apply: () => { game.knockbackMult *= 1.3; } },
+];
+
+function showUpgradeShop(wave) {
+  let pool = [...UPGRADE_POOL];
+  // Shuffle and pick 3
+  for (let i = pool.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  let picks = pool.slice(0, 3);
+
+  let container = document.getElementById('upgradeCards');
+  container.innerHTML = '';
+  document.getElementById('upgradeWaveNum').textContent = wave;
+
+  picks.forEach(up => {
+    let card = document.createElement('div');
+    card.className = 'upgrade-card';
+    card.innerHTML = `<div class="icon">${up.icon}</div><div class="name">${up.name}</div><div class="desc">${up.desc}</div>`;
+    card.addEventListener('click', () => {
+      up.apply();
+      playSound('upgrade');
+      document.getElementById('upgradeScreen').classList.add('hidden');
+      addFloatingText(punch.x, punch.y - 40, `${up.icon} ${up.name}!`, '#ffdd44', 20);
+      startNextWave();
+    });
+    container.appendChild(card);
+  });
+
+  document.getElementById('upgradeScreen').classList.remove('hidden');
+}
+
+function startNextWave() {
+  let nextWave = game.wave + 1;
+  document.getElementById('levelScreen').classList.remove('hidden');
+  document.getElementById('nextWaveNum').textContent = nextWave;
+  let tips = [
+    'Stay strong, Punch! 🧡', 'The plushie believes in you!',
+    '#HangInTherePunch 🐵', 'Show them who\'s boss!',
+    'You\'re making friends... by punching!', 'The zoo is cheering for you!',
+    'IKEA sent more plushies! 🧸', 'Punch-kun fights back!',
+  ];
+  document.getElementById('waveTip').textContent = tips[Math.floor(Math.random() * tips.length)];
+  playSound('wave');
+
+  setTimeout(() => {
+    document.getElementById('levelScreen').classList.add('hidden');
+    startWave(nextWave);
+    game.state = 'playing';
+  }, 1800);
+}
+
+// =====================================================
+//  GAME STATE
+// =====================================================
+let game = {
+  state: 'menu', score: 0, lives: 3, maxLives: 3, wave: 1,
+  combo: 0, maxCombo: 0, totalKills: 0,
+  shakeTimer: 0, shakeIntensity: 0,
+  particles: [], floatingTexts: [], enemies: [], powerups: [], projectiles: [],
+  punchCooldown: 0,
+  shieldActive: false, shieldTimer: 0, shieldCooldown: 0,
+  shieldDuration: 2, shieldCooldownMax: 8,
+  superPunchReady: false,
+  waveEnemiesTotal: 0, waveEnemiesSpawned: 0, waveEnemiesKilled: 0,
+  spawnTimer: 0, time: 0, invincibleTimer: 0,
+  // Feature 2: Dash
+  dashCooldown: 0, dashCooldownMax: 1.2, dashing: false, dashTimer: 0,
+  dashDirX: 0, dashDirY: 0, totalDashes: 0,
+  // Feature 4: Plushie throw
+  plushieOut: false, plushieX: 0, plushieY: 0, plushieVX: 0, plushieVY: 0,
+  plushieReturn: false, plushieCooldown: 0, plushieDamage: 2, plushieHits: 0,
+  totalPlushieHits: 0,
+  // Feature 7: Crowd meter
+  crowdMeter: 0, crowdMax: 100, crowdFillRate: 1, crowdMeterFilled: false,
+  // Feature 8: Day/Night
+  dayPhase: 0, // 0=morning, 1=afternoon, 2=dusk, 3=night
+  // Feature 10: Taunt tracking
+  waveDamageTaken: false,
+  // Upgrades
+  comboBonus: 0.1, knockbackMult: 1,
+};
+
+let punch = {
+  x: W / 2, y: H / 2,
+  w: 28, h: 32,
+  vx: 0, vy: 0,
+  speed: 4.8, baseDamage: 1,
+  facing: 1, punching: false, punchFrame: 0,
+  punchRange: 55, punchArc: Math.PI * 0.7, punchDamage: 1,
+  aimAngle: 0, // 360° aim angle toward mouse
+};
+
+let keys = {};
+let mouseX = W / 2, mouseY = H / 2; // mouse position in canvas coords
+let inputMode = 'mouse'; // 'mouse' or 'keyboard' — auto-detects based on last input
+let kbAimX = 1, kbAimY = 0; // last keyboard aim direction (unit vector)
+
+// =====================================================
+//  DRAWING — BACKGROUND with DAY/NIGHT (Feature 8)
+// =====================================================
+function getDayColors() {
+  let phase = game.dayPhase;
+  let phases = [
+    { sky: ['#1a3a2a','#2d5a3d','#4a7a44','#6b8a3a'], ground: ['#5a9a44','#4a8a34','#3a7a24'], tree: 0.5, overlay: null },
+    { sky: ['#2a3a1a','#4a5a2d','#6a7a34','#8a8a2a'], ground: ['#6a9a34','#5a8a24','#4a7a14'], tree: 0.45, overlay: null },
+    { sky: ['#3a1a2a','#5a2a3d','#7a4444','#8a5a3a'], ground: ['#5a7a44','#4a6a34','#3a5a24'], tree: 0.35, overlay: 'rgba(80,30,20,0.15)' },
+    { sky: ['#0a0a1e','#0a1a2e','#1a2a3e','#2a3a2e'], ground: ['#2a4a24','#1a3a14','#0a2a0a'], tree: 0.25, overlay: 'rgba(0,0,30,0.3)' },
+  ];
+  return phases[phase % 4];
+}
+
+function drawBackground() {
+  let colors = getDayColors();
+  let grad = ctx.createLinearGradient(0, 0, 0, H);
+  colors.sky.forEach((c, i) => grad.addColorStop(i / (colors.sky.length - 1), c));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Night stars
+  if (game.dayPhase === 3) {
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 40; i++) {
+      let sx = (i * 97 + 33) % W;
+      let sy = (i * 61 + 17) % (H * 0.4);
+      let twinkle = Math.sin(game.time * 2 + i) * 0.5 + 0.5;
+      ctx.globalAlpha = twinkle * 0.7;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1 + twinkle, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  for (let i = 0; i < 6; i++) {
+    drawBgTree(80 + i * 160, 100 + Math.sin(i * 1.5) * 30, 0.6 + Math.sin(i) * 0.2, colors.tree);
+  }
+
+  let groundGrad = ctx.createLinearGradient(0, H - 120, 0, H);
+  colors.ground.forEach((c, i) => groundGrad.addColorStop(i / (colors.ground.length - 1), c));
+  ctx.fillStyle = groundGrad;
+  ctx.beginPath(); ctx.moveTo(0, H - 100);
+  for (let x = 0; x <= W; x += 30) ctx.lineTo(x, H - 100 + Math.sin(x * 0.02 + game.time * 0.5) * 8);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+
+  // Fence
+  ctx.strokeStyle = 'rgba(139,119,101,0.25)'; ctx.lineWidth = 3;
+  for (let i = 0; i < 12; i++) { let fx = 40 + i * 75; ctx.beginPath(); ctx.moveTo(fx, 160); ctx.lineTo(fx, 220); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(20, 180); ctx.lineTo(W - 20, 180); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(20, 210); ctx.lineTo(W - 20, 210); ctx.stroke();
+
+  // Day overlay
+  if (colors.overlay) { ctx.fillStyle = colors.overlay; ctx.fillRect(0, 0, W, H); }
+}
+
+function drawBgTree(x, y, scale, alpha) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.globalAlpha = alpha || 0.5;
+  ctx.fillStyle = '#5a4a2a'; ctx.fillRect(-10, 20, 20, 80);
+  ctx.fillStyle = '#284028'; ctx.beginPath(); ctx.arc(0, 0, 50, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#327832'; ctx.beginPath(); ctx.arc(-20, -15, 35, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(20, -10, 38, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// =====================================================
+//  DRAWING — PUNCH (tiny baby macaque)
+// =====================================================
+function drawPunch(p) {
+  ctx.save();
+  if (game.invincibleTimer > 0 && Math.floor(game.time * 10) % 2 === 0) ctx.globalAlpha = 0.5;
+  if (game.dashing) ctx.globalAlpha = 0.7;
+  ctx.translate(p.x, p.y);
+  ctx.scale(p.facing, 1);
+  let babyScale = 0.55;
+  ctx.scale(babyScale, babyScale);
+  let bob = Math.sin(game.time * 6) * 2;
+  let isMoving = Math.abs(p.vx) > 0.5 || Math.abs(p.vy) > 0.5;
+  let walkBob = isMoving ? Math.sin(game.time * 14) * 5 : 0;
+
+  // Local aim angle (account for facing flip)
+  let localAim = p.facing === 1 ? p.aimAngle : Math.PI - p.aimAngle;
+  let lookX = Math.cos(localAim) * 2.5;
+  let lookY = Math.sin(localAim) * 2;
+
+  // Dash trail
+  if (game.dashing) {
+    ctx.globalAlpha = 0.3; ctx.fillStyle = '#88ddff';
+    ctx.beginPath(); ctx.ellipse(0, 5, 24, 28, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  }
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(0, 28, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Shield
+  if (game.shieldActive) {
+    ctx.strokeStyle = 'rgba(100,200,255,0.6)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(0, 0, 52, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(100,200,255,0.12)'; ctx.fill();
+  }
+
+  // Plushie on back (only if not thrown)
+  if (!game.plushieOut) {
+    ctx.save(); ctx.translate(-14, -8 + bob); ctx.rotate(Math.sin(game.time * 3) * 0.1);
+    ctx.fillStyle = '#cc5500'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 14, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ee8833'; ctx.beginPath(); ctx.ellipse(0, -4, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(-3, -5, 1.5, 0, Math.PI * 2); ctx.arc(3, -5, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#bb6622'; ctx.beginPath(); ctx.ellipse(0, -1, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#cc5500'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-10, 2); ctx.lineTo(-16, 8); ctx.moveTo(10, 2); ctx.lineTo(16, 8); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Legs
+  ctx.fillStyle = '#c4956a';
+  ctx.beginPath(); ctx.ellipse(-8, 20 - walkBob, 7, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(8, 20 + walkBob, 7, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#d4a574'; ctx.beginPath(); ctx.ellipse(0, 4 + bob, 18, 22, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8c9a0'; ctx.beginPath(); ctx.ellipse(2, 8 + bob, 11, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Arms — 360° aim-aware punch arm!
+  let armAngle = isMoving ? Math.sin(game.time * 12) * 0.4 : Math.sin(game.time * 2) * 0.1;
+  if (p.punching) {
+    // Punch arm rotates toward mouse (360°!)
+    ctx.save();
+    ctx.translate(0, -2 + bob);
+    ctx.rotate(localAim);
+    // Upper arm
+    ctx.fillStyle = '#c4956a';
+    ctx.beginPath(); ctx.ellipse(18, 0, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
+    // Fist
+    ctx.fillStyle = '#e8c9a0';
+    ctx.beginPath(); ctx.arc(28, 0, 8, 0, Math.PI * 2); ctx.fill();
+    // Impact lines radiating outward
+    ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      let a = -0.4 + i * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(34 + Math.cos(a) * 2, Math.sin(a) * 2);
+      ctx.lineTo(34 + Math.cos(a) * (10 + p.punchFrame * 2), Math.sin(a) * (10 + p.punchFrame * 2));
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else {
+    // Normal right arm
+    ctx.fillStyle = '#c4956a'; ctx.save(); ctx.translate(16, 2 + bob); ctx.rotate(armAngle);
+    ctx.beginPath(); ctx.ellipse(4, 8, 6, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  // Left arm
+  ctx.fillStyle = '#c4956a'; ctx.save(); ctx.translate(-16, 2 + bob); ctx.rotate(-armAngle - 0.3);
+  ctx.beginPath(); ctx.ellipse(-4, 6, 6, 10, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+
+  // Head — slight tilt toward mouse
+  let headTilt = Math.sin(localAim) * 0.08;
+  ctx.save(); ctx.rotate(headTilt);
+  ctx.fillStyle = '#d4a574'; ctx.beginPath(); ctx.ellipse(0, -18 + bob, 18, 17, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f0bfa0'; ctx.beginPath(); ctx.ellipse(3, -14 + bob, 12, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Eyes — PUPILS FOLLOW THE MOUSE! 👀
+  let blink = Math.sin(game.time * 0.5) > 0.97;
+  if (!blink) {
+    // Eye whites
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(-1, -18 + bob, 5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, -18 + bob, 5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    // Pupils shifted toward mouse
+    ctx.fillStyle = '#2a1a0a';
+    ctx.beginPath(); ctx.arc(-1 + lookX, -18 + bob + lookY, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9 + lookX, -18 + bob + lookY, 2.5, 0, Math.PI * 2); ctx.fill();
+    // Eye shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-1 + lookX * 0.3, -19.5 + bob + lookY * 0.3, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9 + lookX * 0.3, -19.5 + bob + lookY * 0.3, 1.2, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-3, -18 + bob); ctx.lineTo(1, -18 + bob); ctx.moveTo(7, -18 + bob); ctx.lineTo(11, -18 + bob); ctx.stroke();
+  }
+
+  // Nose
+  ctx.fillStyle = '#b08060'; ctx.beginPath(); ctx.ellipse(4, -12 + bob, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Mouth
+  if (p.punching) {
+    ctx.fillStyle = '#a05030'; ctx.beginPath(); ctx.ellipse(4, -7 + bob, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(1, -9 + bob, 2, 2); ctx.fillRect(5, -9 + bob, 2, 2);
+  } else { ctx.strokeStyle = '#a07050'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(4, -9 + bob, 3, 0.2, Math.PI - 0.2); ctx.stroke(); }
+
+  // Ears
+  ctx.fillStyle = '#c4956a'; ctx.beginPath(); ctx.arc(-16, -18 + bob, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#edb'; ctx.beginPath(); ctx.arc(-16, -18 + bob, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c4956a'; ctx.beginPath(); ctx.arc(18, -20 + bob, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#edb'; ctx.beginPath(); ctx.arc(18, -20 + bob, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.restore(); // head tilt
+
+  // Tail
+  ctx.strokeStyle = '#c4956a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-14, 16); let tw = Math.sin(game.time * 4) * 8;
+  ctx.quadraticCurveTo(-28 + tw, 10, -24 + tw, -2); ctx.stroke();
+  ctx.restore();
+}
+
+// =====================================================
+//  DRAWING — ENEMY (with taunt animation, Feature 10)
+// =====================================================
+function drawEnemy(e) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  let facing = e.vx >= 0 ? 1 : -1;
+  ctx.scale(facing, 1);
+  let bob = Math.sin(game.time * 5 + e.id) * 2;
+  let scale = e.type === 'big' ? 1.9 : e.type === 'fast' ? 1.15 : e.type === 'boss' ? 2.2 : e.type === 'thrower' ? 1.25 : 1.35;
+  ctx.scale(scale, scale);
+
+  if (e.hitFlash > 0) ctx.globalAlpha = 0.6 + Math.sin(game.time * 20) * 0.3;
+
+  // Taunt glow (Feature 10)
+  if (e.taunting) {
+    ctx.fillStyle = `rgba(255,100,0,${0.15 + Math.sin(game.time * 8) * 0.1})`;
+    ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+    // "!" indicator
+    ctx.font = 'bold 16px Fredoka One'; ctx.fillStyle = '#ff4400'; ctx.textAlign = 'center';
+    ctx.fillText('!', 0, -42 + bob);
+  }
+
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(0, 24, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  let bodyColor, darkColor;
+  if (e.type === 'big') { bodyColor = '#8a6644'; darkColor = '#6a4422'; }
+  else if (e.type === 'fast') { bodyColor = '#aa7755'; darkColor = '#885533'; }
+  else if (e.type === 'boss') { bodyColor = '#6a3322'; darkColor = '#4a2211'; }
+  else if (e.type === 'thrower') { bodyColor = '#7a8855'; darkColor = '#5a6633'; }
+  else { bodyColor = '#9a7a5a'; darkColor = '#7a5a3a'; }
+
+  // Legs
+  ctx.fillStyle = darkColor;
+  let lo = e.taunting ? 0 : Math.sin(game.time * 10 + e.id) * 4;
+  ctx.beginPath(); ctx.ellipse(-7, 18 - lo, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(7, 18 + lo, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Body
+  ctx.fillStyle = bodyColor; ctx.beginPath(); ctx.ellipse(0, 2 + bob, 16, 20, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d4b894'; ctx.beginPath(); ctx.ellipse(2, 6 + bob, 10, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Arms
+  ctx.fillStyle = darkColor;
+  if (e.taunting) {
+    // Taunt pose — arms spread wide!
+    ctx.save(); ctx.translate(14, -4 + bob); ctx.rotate(-0.8);
+    ctx.beginPath(); ctx.ellipse(10, 0, 8, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(-14, -4 + bob); ctx.rotate(0.8);
+    ctx.beginPath(); ctx.ellipse(-10, 0, 8, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  } else if (e.attacking) {
+    ctx.save(); ctx.translate(14, -2 + bob); ctx.rotate(-0.5 + Math.sin(game.time * 15) * 0.3);
+    ctx.beginPath(); ctx.ellipse(10, 0, 8, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = bodyColor; ctx.beginPath(); ctx.arc(18, -2, 6, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  } else {
+    ctx.save(); ctx.translate(14, 2 + bob); ctx.rotate(Math.sin(game.time * 8 + e.id) * 0.3);
+    ctx.beginPath(); ctx.ellipse(2, 8, 5, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  if (!e.taunting) {
+    ctx.save(); ctx.translate(-14, 2 + bob); ctx.rotate(-Math.sin(game.time * 8 + e.id) * 0.3);
+    ctx.beginPath(); ctx.ellipse(-2, 8, 5, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+
+  // Head
+  ctx.fillStyle = bodyColor; ctx.beginPath(); ctx.ellipse(0, -16 + bob, 16, 15, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ddc4a4'; ctx.beginPath(); ctx.ellipse(2, -13 + bob, 10, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(-2, -16 + bob, 4, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(7, -16 + bob, 4, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#cc2200'; ctx.beginPath(); ctx.arc(-1, -16 + bob, 2, 0, Math.PI * 2); ctx.arc(8, -16 + bob, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-6, -22 + bob); ctx.lineTo(1, -20 + bob); ctx.moveTo(11, -20 + bob); ctx.lineTo(4, -22 + bob); ctx.stroke();
+  ctx.fillStyle = '#6a2a1a'; ctx.beginPath(); ctx.ellipse(3, -7 + bob, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, -9 + bob, 2, 2); ctx.fillRect(4, -9 + bob, 2, 2);
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.arc(-14, -16 + bob, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(16, -16 + bob, 5, 0, Math.PI * 2); ctx.fill();
+
+  // Thrower banana belt
+  if (e.type === 'thrower') {
+    ctx.strokeStyle = '#ccaa22'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 4 + bob, 18, -0.5, 0.5); ctx.stroke();
+    ctx.fillStyle = '#ffdd44';
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(12 + i * 4, 2 + bob, 3, 6, 0.3, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  // HP bar
+  if (e.hp < e.maxHp) {
+    let bw = 34, bh = 5;
+    ctx.fillStyle = '#222'; ctx.fillRect(-bw / 2, -38 + bob, bw, bh);
+    ctx.fillStyle = e.hp / e.maxHp > 0.5 ? '#44cc44' : e.hp / e.maxHp > 0.25 ? '#cccc44' : '#cc4444';
+    ctx.fillRect(-bw / 2, -38 + bob, bw * (e.hp / e.maxHp), bh);
+  }
+
+  // Boss crown
+  if (e.type === 'boss') {
+    ctx.fillStyle = '#ffcc00'; ctx.beginPath();
+    ctx.moveTo(-10, -34 + bob); ctx.lineTo(-12, -44 + bob); ctx.lineTo(-6, -38 + bob);
+    ctx.lineTo(0, -46 + bob); ctx.lineTo(6, -38 + bob); ctx.lineTo(12, -44 + bob);
+    ctx.lineTo(10, -34 + bob); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// =====================================================
+//  DRAWING — Particles, Text, Powerups, Projectiles, Plushie
+// =====================================================
+function drawParticles() {
+  for (let p of game.particles) {
+    ctx.save(); ctx.globalAlpha = p.life; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    if (p.type === 'star') { ctx.fillStyle = p.color; drawStar(0, 0, 5, p.size, p.size / 2); }
+    else if (p.type === 'banana') { ctx.fillStyle = '#ffdd44'; ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size * 0.4, p.rot, 0, Math.PI); ctx.fill(); }
+    else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(0, 0, p.size, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+}
+function drawStar(cx, cy, spikes, outerR, innerR) {
+  let rot = Math.PI / 2 * 3, step = Math.PI / spikes;
+  ctx.beginPath(); ctx.moveTo(cx, cy - outerR);
+  for (let i = 0; i < spikes; i++) { ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR); rot += step; ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR); rot += step; }
+  ctx.closePath(); ctx.fill();
+}
+function drawFloatingTexts() {
+  for (let ft of game.floatingTexts) {
+    ctx.save(); ctx.globalAlpha = ft.life;
+    ctx.font = `bold ${ft.size}px 'Fredoka One', cursive`; ctx.textAlign = 'center';
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 3; ctx.strokeText(ft.text, ft.x, ft.y);
+    ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.restore();
+  }
+}
+function drawPowerups() {
+  for (let pu of game.powerups) {
+    ctx.save(); ctx.translate(pu.x, pu.y + Math.sin(game.time * 3 + pu.x) * 5);
+    ctx.fillStyle = `rgba(255,255,100,${0.2 + Math.sin(game.time * 4) * 0.1})`;
+    ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+    if (pu.type === 'banana') { ctx.fillStyle = '#ffdd44'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 6, -0.3, 0, Math.PI); ctx.fill(); }
+    else if (pu.type === 'heart') { ctx.font = '22px Arial'; ctx.textAlign = 'center'; ctx.fillText('❤️', 0, 8); }
+    else if (pu.type === 'plushie') { ctx.fillStyle = '#cc5500'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#ee8833'; ctx.beginPath(); ctx.arc(0, -3, 7, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(-2, -4, 1.5, 0, Math.PI * 2); ctx.arc(2, -4, 1.5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+}
+// Feature 3: Draw enemy banana projectiles
+function drawProjectiles() {
+  for (let pr of game.projectiles) {
+    ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(game.time * 5 + pr.id);
+    ctx.fillStyle = '#ffdd44'; ctx.beginPath(); ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = '#ccaa22'; ctx.beginPath(); ctx.ellipse(0, 1, 5, 2, 0, 0, Math.PI); ctx.fill();
+    ctx.restore();
+  }
+}
+// Feature 4: Draw plushie projectile
+function drawPlushieProjectile() {
+  if (!game.plushieOut) return;
+  ctx.save(); ctx.translate(game.plushieX, game.plushieY);
+  ctx.rotate(game.time * 8);
+  // Spinning plushie!
+  ctx.fillStyle = '#cc5500'; ctx.beginPath(); ctx.ellipse(0, 0, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ee8833'; ctx.beginPath(); ctx.ellipse(0, -5, 10, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(-3, -6, 2, 0, Math.PI * 2); ctx.arc(3, -6, 2, 0, Math.PI * 2); ctx.fill();
+  // Trail
+  ctx.globalAlpha = 0.3; ctx.fillStyle = '#ff8833';
+  ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// =====================================================
+//  GAME LOGIC
+// =====================================================
+function spawnParticles(x, y, count, color, type) {
+  for (let i = 0; i < count; i++) {
+    let angle = Math.random() * Math.PI * 2, speed = Math.random() * 4 + 1;
+    game.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 1, life: 1, decay: 0.02 + Math.random() * 0.02, size: Math.random() * 6 + 2, color: color || '#ffaa00', type: type || 'hit', rot: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.2 });
+  }
+}
+function addFloatingText(x, y, text, color, size) {
+  game.floatingTexts.push({ x, y, text, color: color || '#fff', size: size || 20, vy: -2, life: 1, decay: 0.02 });
+}
+function normalizeAngle(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
+
+function spawnEnemy() {
+  let side = Math.floor(Math.random() * 4), x, y, margin = 60;
+  switch (side) {
+    case 0: x = -margin; y = 240 + Math.random() * (H - 270); break;
+    case 1: x = W + margin; y = 240 + Math.random() * (H - 270); break;
+    case 2: x = Math.random() * W; y = 180; break;
+    case 3: x = Math.random() * W; y = H + margin; break;
+  }
+  let type = 'normal', hp = 2, speed = 1.2 + game.wave * 0.15, damage = 1, score = 100;
+
+  let roll = Math.random();
+  // Feature 3: Banana thrower spawns
+  if (game.wave >= 2 && roll < 0.2) { type = 'thrower'; hp = 2; speed = 0.7; damage = 1; score = 200; }
+  else if (game.wave >= 3 && roll < 0.4) { type = 'fast'; hp = 1; speed = 2.5 + game.wave * 0.1; score = 150; }
+  else if (game.wave >= 5 && roll < 0.5) { type = 'big'; hp = 5; speed = 0.8 + game.wave * 0.05; damage = 2; score = 300; }
+
+  if (game.wave >= 8 && game.waveEnemiesSpawned === game.waveEnemiesTotal - 1 && game.wave % 3 === 0) {
+    type = 'boss'; hp = 12 + game.wave * 2; speed = 0.6; damage = 2; score = 1000;
+  }
+
+  game.enemies.push({
+    id: Math.random(), x, y, vx: 0, vy: 0,
+    type, hp, maxHp: hp, speed, damage, score,
+    hitFlash: 0, attacking: false, attackCooldown: 0,
+    w: type === 'big' ? 52 : type === 'boss' ? 62 : type === 'fast' ? 34 : 40,
+    h: type === 'big' ? 58 : type === 'boss' ? 70 : type === 'fast' ? 40 : 48,
+    // Feature 10: Taunt
+    taunting: false, tauntTimer: 0, tauntCooldown: 3 + Math.random() * 4,
+    // Feature 3: Thrower
+    throwTimer: type === 'thrower' ? 2 : 0,
+  });
+}
+
+function spawnPowerup(x, y) {
+  if (Math.random() > 0.25) return;
+  let types = ['banana', 'banana', 'banana'];
+  if (game.lives < game.maxLives) types.push('heart');
+  if (game.wave >= 4) types.push('plushie');
+  game.powerups.push({ x, y, type: types[Math.floor(Math.random() * types.length)], life: 8 });
+}
+
+function startWave(wave) {
+  game.wave = wave;
+  game.waveEnemiesTotal = 5 + wave * 3 + Math.floor(wave * wave * 0.3);
+  game.waveEnemiesSpawned = 0;
+  game.waveEnemiesKilled = 0;
+  game.spawnTimer = 0;
+  game.waveDamageTaken = false;
+  // Feature 8: Day/night changes every 3 waves
+  game.dayPhase = Math.floor((wave - 1) / 3) % 4;
+  document.getElementById('levelVal').textContent = wave;
+}
+
+// ---- PUNCH ----
+function doPunch() {
+  if (game.punchCooldown > 0) return;
+  punch.punching = true; punch.punchFrame = 0; game.punchCooldown = 0.35;
+  playSound('punch');
+  // 360° punch — aim toward mouse or keyboard direction
+  if (inputMode === 'keyboard') {
+    punch.aimAngle = Math.atan2(kbAimY, kbAimX);
+  } else {
+    punch.aimAngle = Math.atan2(mouseY - punch.y, mouseX - punch.x);
+  }
+  punch.facing = Math.cos(punch.aimAngle) >= 0 ? 1 : -1;
+  let punchAngle = punch.aimAngle, hitAny = false;
+
+  for (let e of game.enemies) {
+    let dx = e.x - punch.x, dy = e.y - punch.y;
+    let dist = Math.sqrt(dx * dx + dy * dy), angle = Math.atan2(dy, dx);
+    let angleDiff = Math.abs(normalizeAngle(angle - punchAngle));
+
+    if (dist < punch.punchRange + e.w / 2 && angleDiff < punch.punchArc / 2) {
+      // Feature 10: Double damage if taunting
+      let dmg = punch.punchDamage * (e.taunting ? 2 : 1);
+      e.hp -= dmg; e.hitFlash = 0.3; e.taunting = false;
+      let kb = 8 * game.knockbackMult;
+      e.vx += Math.cos(angle) * kb; e.vy += Math.sin(angle) * kb;
+      spawnParticles(e.x, e.y - 10, 6, '#ffcc00', 'star');
+      addFloatingText(e.x, e.y - 30, e.taunting ? 'PUNISH!' : 'POW!', e.taunting ? '#ff4400' : '#ffcc00', e.taunting ? 22 : 18);
+      playSound('hit'); hitAny = true;
+
+      if (e.hp <= 0) {
+        let pts = Math.floor(e.score * (1 + game.combo * game.comboBonus));
+        game.score += pts; game.combo++;
+        if (game.combo > game.maxCombo) game.maxCombo = game.combo;
+        game.waveEnemiesKilled++; game.totalKills++;
+        // Feature 7: Crowd meter fill
+        game.crowdMeter = Math.min(game.crowdMax, game.crowdMeter + 3 * game.crowdFillRate);
+        spawnParticles(e.x, e.y, 12, '#ff6600', 'star');
+        addFloatingText(e.x, e.y - 40, `+${pts}`, '#ffee44', 22);
+        spawnPowerup(e.x, e.y);
+        playSound('kill');
+        if (e.type === 'boss') unlockAchievement('boss_slayer');
+        if (game.combo >= 10) game.superPunchReady = true;
+        if (game.combo % 5 === 0) {
+          let popup = document.getElementById('comboPopup');
+          popup.textContent = `🔥 ${game.combo}x COMBO!`;
+          popup.style.left = (punch.x - 60) + 'px'; popup.style.top = (punch.y - 80) + 'px';
+          popup.style.opacity = 1; setTimeout(() => popup.style.opacity = 0, 1000);
+        }
+      }
+    }
+  }
+  if (!hitAny) game.combo = 0;
+  game.enemies = game.enemies.filter(e => e.hp > 0);
+  checkAchievements(); updateHUD();
+}
+
+function doSuperPunch() {
+  if (!game.superPunchReady || game.combo < 10) return;
+  game.superPunchReady = false;
+  spawnParticles(punch.x, punch.y, 20, '#ff4400', 'star');
+  addFloatingText(punch.x, punch.y - 60, '💥 SUPER PUNCH! 💥', '#ff4400', 30);
+  game.shakeTimer = 0.5; game.shakeIntensity = 12;
+  playSound('wave');
+  for (let e of game.enemies) {
+    e.hp -= 3; e.hitFlash = 0.5; e.taunting = false;
+    let dx = e.x - punch.x, dy = e.y - punch.y, dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    e.vx += (dx / dist) * 15 * game.knockbackMult; e.vy += (dy / dist) * 15 * game.knockbackMult;
+    if (e.hp <= 0) { game.score += e.score * 2; game.waveEnemiesKilled++; game.totalKills++; spawnPowerup(e.x, e.y); }
+  }
+  game.enemies = game.enemies.filter(e => e.hp > 0);
+  game.combo = 0; updateHUD();
+}
+
+function activateShield() {
+  if (game.shieldCooldown > 0 || game.shieldActive) return;
+  game.shieldActive = true; game.shieldTimer = game.shieldDuration;
+  game.shieldCooldown = game.shieldCooldownMax;
+  addFloatingText(punch.x, punch.y - 50, '🛡️ Plushie Shield!', '#66ccff', 20);
+  spawnParticles(punch.x, punch.y, 10, '#66ccff', 'hit');
+}
+
+// Feature 2: Dash
+function doDash() {
+  if (game.dashCooldown > 0 || game.dashing) return;
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+  if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+  if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+  if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+  if (dx === 0 && dy === 0) dx = punch.facing; // Dash in facing direction
+  let len = Math.sqrt(dx * dx + dy * dy) || 1;
+  game.dashDirX = dx / len; game.dashDirY = dy / len;
+  game.dashing = true; game.dashTimer = 0.15;
+  game.dashCooldown = game.dashCooldownMax;
+  game.invincibleTimer = Math.max(game.invincibleTimer, 0.2);
+  game.totalDashes++;
+  playSound('dash');
+  spawnParticles(punch.x, punch.y, 6, '#88ddff', 'hit');
+}
+
+// Feature 4: Plushie Throw
+function doPlushieThrow() {
+  if (game.plushieOut || game.plushieCooldown > 0) return;
+  game.plushieOut = true; game.plushieReturn = false;
+  game.plushieX = punch.x; game.plushieY = punch.y;
+  // Throw toward mouse (360°!)
+  game.plushieVX = Math.cos(punch.aimAngle) * 10;
+  game.plushieVY = Math.sin(punch.aimAngle) * 10;
+  game.plushieHits = 0; game.plushieCooldown = 3;
+  playSound('throw');
+}
+
+function takeDamage(amount) {
+  if (game.invincibleTimer > 0 || game.shieldActive) {
+    if (game.shieldActive) { addFloatingText(punch.x, punch.y - 40, 'Blocked!', '#66ccff', 18); spawnParticles(punch.x, punch.y, 6, '#66ccff', 'hit'); }
+    return;
+  }
+  game.lives -= amount; game.combo = 0;
+  game.invincibleTimer = 1.5; game.shakeTimer = 0.3; game.shakeIntensity = 8;
+  game.waveDamageTaken = true;
+  spawnParticles(punch.x, punch.y, 10, '#ff4444', 'hit');
+  addFloatingText(punch.x, punch.y - 40, '-' + amount + ' ❤️', '#ff4444', 24);
+  playSound('hurt');
+  if (game.lives <= 0) { game.lives = 0; game.state = 'gameover'; showGameOver(); }
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('scoreVal').textContent = Math.floor(game.score);
+  document.getElementById('comboVal').textContent = game.combo;
+  let livesHTML = '';
+  for (let i = 1; i <= game.maxLives; i++) livesHTML += `<span class="heart ${i <= game.lives ? '' : 'lost'}">❤️</span>`;
+  document.getElementById('livesBox').innerHTML = livesHTML;
+}
+
+// =====================================================
+//  MAIN UPDATE
+// =====================================================
+function update(dt) {
+  if (game.state !== 'playing') return;
+  game.time += dt;
+
+  // Feature 2: Dash movement
+  if (game.dashing) {
+    game.dashTimer -= dt;
+    punch.x += game.dashDirX * 14; punch.y += game.dashDirY * 14;
+    spawnParticles(punch.x, punch.y, 1, '#88ddff', 'hit');
+    if (game.dashTimer <= 0) game.dashing = false;
+  } else {
+    let moveX = 0, moveY = 0;
+    let aimKeyX = 0, aimKeyY = 0;
+    if (keys['ArrowLeft'] || keys['KeyA']) { moveX -= 1; aimKeyX -= 1; inputMode = 'keyboard'; }
+    if (keys['ArrowRight'] || keys['KeyD']) { moveX += 1; aimKeyX += 1; inputMode = 'keyboard'; }
+    if (keys['ArrowUp'] || keys['KeyW']) { moveY -= 1; aimKeyY -= 1; inputMode = 'keyboard'; }
+    if (keys['ArrowDown'] || keys['KeyS']) { moveY += 1; aimKeyY += 1; inputMode = 'keyboard'; }
+    // Remember last held keyboard direction for aiming (eyes + punch follow it)
+    if (aimKeyX !== 0 || aimKeyY !== 0) { kbAimX = aimKeyX; kbAimY = aimKeyY; }
+    if (moveX !== 0 && moveY !== 0) { moveX *= 0.707; moveY *= 0.707; }
+    punch.vx = moveX * punch.speed; punch.vy = moveY * punch.speed;
+    punch.x += punch.vx; punch.y += punch.vy;
+  }
+  punch.x = Math.max(30, Math.min(W - 30, punch.x));
+  punch.y = Math.max(240, Math.min(H - 30, punch.y));
+
+  // Update aim angle continuously — mouse OR keyboard, whichever was used last
+  if (inputMode === 'keyboard') {
+    punch.aimAngle = Math.atan2(kbAimY, kbAimX);
+  } else {
+    punch.aimAngle = Math.atan2(mouseY - punch.y, mouseX - punch.x);
+  }
+  punch.facing = Math.cos(punch.aimAngle) >= 0 ? 1 : -1;
+
+  // Cooldowns
+  if (game.punchCooldown > 0) game.punchCooldown -= dt;
+  if (game.invincibleTimer > 0) game.invincibleTimer -= dt;
+  if (game.shieldCooldown > 0) game.shieldCooldown -= dt;
+  if (game.shakeTimer > 0) game.shakeTimer -= dt;
+  if (game.dashCooldown > 0) game.dashCooldown -= dt;
+  if (game.plushieCooldown > 0 && !game.plushieOut) game.plushieCooldown -= dt;
+  if (game.shieldActive) { game.shieldTimer -= dt; if (game.shieldTimer <= 0) game.shieldActive = false; }
+  if (punch.punching) { punch.punchFrame += dt * 20; if (punch.punchFrame > 5) { punch.punching = false; punch.punchFrame = 0; } }
+
+  // Spawn enemies
+  if (game.waveEnemiesSpawned < game.waveEnemiesTotal) {
+    game.spawnTimer -= dt;
+    if (game.spawnTimer <= 0) { spawnEnemy(); game.waveEnemiesSpawned++; game.spawnTimer = Math.max(0.3, 2 - game.wave * 0.12); }
+  }
+
+  // Wave complete
+  if (game.waveEnemiesKilled >= game.waveEnemiesTotal && game.enemies.length === 0) {
+    game.state = 'waveTransition';
+    // Feature 9: Untouchable achievement
+    if (!game.waveDamageTaken) unlockAchievement('untouchable');
+    checkAchievements();
+    playSound('wave');
+    // Feature 1: Show upgrade shop
+    showUpgradeShop(game.wave);
+  }
+
+  // Feature 7: Crowd meter — slowly fills with combo, gives care package when full
+  game.crowdMeter = Math.min(game.crowdMax, game.crowdMeter + game.combo * 0.01 * game.crowdFillRate * dt);
+  if (game.crowdMeter >= game.crowdMax) {
+    game.crowdMeter = 0; game.crowdMeterFilled = true;
+    // Drop care package at random spot
+    let cpx = 100 + Math.random() * (W - 200), cpy = 300 + Math.random() * 200;
+    game.powerups.push({ x: cpx, y: cpy, type: Math.random() < 0.5 ? 'heart' : 'plushie', life: 12 });
+    addFloatingText(W / 2, 100, '👏 CROWD GOES WILD! 📦', '#ffdd44', 24);
+    spawnParticles(cpx, cpy, 15, '#ffdd44', 'star');
+    playSound('crowd');
+    checkAchievements();
+  }
+
+  // Update enemies
+  for (let e of game.enemies) {
+    let dx = punch.x - e.x, dy = punch.y - e.y;
+    let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    let sepX = 0, sepY = 0;
+    for (let other of game.enemies) {
+      if (other === e) continue;
+      let ox = e.x - other.x, oy = e.y - other.y, od = Math.sqrt(ox * ox + oy * oy) || 1;
+      if (od < 55) { sepX += (ox / od) * 2.5; sepY += (oy / od) * 2.5; }
+    }
+
+    // Feature 10: Taunt behavior
+    e.tauntCooldown -= dt;
+    if (!e.taunting && e.tauntCooldown <= 0 && dist < 200 && dist > 60 && e.type !== 'thrower') {
+      e.taunting = true; e.tauntTimer = 1.0; e.tauntCooldown = 5 + Math.random() * 5;
+      playSound('taunt');
+    }
+    if (e.taunting) {
+      e.tauntTimer -= dt; e.vx *= 0.8; e.vy *= 0.8;
+      if (e.tauntTimer <= 0) { e.taunting = false; e.speed *= 1.3; setTimeout(() => { if (e.hp > 0) e.speed /= 1.3; }, 2000); }
+    }
+    // Feature 3: Thrower shoots bananas
+    else if (e.type === 'thrower') {
+      if (dist < 300 && dist > 80) {
+        e.throwTimer -= dt;
+        if (e.throwTimer <= 0) {
+          let angle = Math.atan2(dy, dx);
+          // Aim at player with reverse sign (enemy aims AT punch)
+          let projDx = punch.x - e.x, projDy = punch.y - e.y;
+          let projDist = Math.sqrt(projDx * projDx + projDy * projDy) || 1;
+          game.projectiles.push({ id: Math.random(), x: e.x, y: e.y, vx: (projDx / projDist) * 4, vy: (projDy / projDist) * 4, life: 4, damage: 1 });
+          e.throwTimer = 2.5 - game.wave * 0.1;
+        }
+        e.vx *= 0.9; e.vy *= 0.9; // Stay at range
+      } else if (dist > 300) {
+        e.vx = (dx / dist) * e.speed + sepX * 0.3; e.vy = (dy / dist) * e.speed + sepY * 0.3;
+      } else {
+        e.vx = -(dx / dist) * e.speed; e.vy = -(dy / dist) * e.speed; // Run away if too close
+      }
+      e.attacking = false;
+    }
+    else if (dist > 45) {
+      e.vx = (dx / dist) * e.speed + sepX * 0.3; e.vy = (dy / dist) * e.speed + sepY * 0.3;
+      e.attacking = false;
+    } else {
+      e.vx *= 0.8; e.vy *= 0.8; e.attacking = true;
+      if (e.attackCooldown <= 0) { takeDamage(e.damage); e.attackCooldown = 1.2; game.shakeTimer = 0.15; game.shakeIntensity = 4; }
+    }
+
+    e.attackCooldown -= dt; e.hitFlash -= dt;
+    if (!e.taunting) { e.x += e.vx; e.y += e.vy; }
+    e.x = Math.max(-30, Math.min(W + 30, e.x)); e.y = Math.max(180, Math.min(H + 30, e.y));
+    e.vx *= 0.92; e.vy *= 0.92;
+  }
+
+  // Feature 3: Update banana projectiles
+  for (let pr of game.projectiles) {
+    pr.x += pr.vx; pr.y += pr.vy; pr.life -= dt;
+    let dx = punch.x - pr.x, dy = punch.y - pr.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 20) { takeDamage(pr.damage); pr.life = 0; spawnParticles(pr.x, pr.y, 4, '#ffdd44', 'banana'); }
+  }
+  game.projectiles = game.projectiles.filter(p => p.life > 0 && p.x > -20 && p.x < W + 20 && p.y > 0 && p.y < H + 20);
+
+  // Feature 4: Update plushie throw
+  if (game.plushieOut) {
+    if (!game.plushieReturn) {
+      game.plushieX += game.plushieVX; game.plushieY += game.plushieVY;
+      // Check if should return
+      if (game.plushieX < 20 || game.plushieX > W - 20 || game.plushieY < 200 || game.plushieY > H - 20 || game.plushieHits >= 5) {
+        game.plushieReturn = true;
+      }
+      // Hit enemies
+      for (let e of game.enemies) {
+        let dx = e.x - game.plushieX, dy = e.y - game.plushieY;
+        if (Math.sqrt(dx * dx + dy * dy) < 35) {
+          e.hp -= game.plushieDamage; e.hitFlash = 0.3;
+          let kb = 6 * game.knockbackMult, angle = Math.atan2(dy, dx);
+          e.vx += Math.cos(angle) * kb; e.vy += Math.sin(angle) * kb;
+          spawnParticles(e.x, e.y, 4, '#ff8833', 'star');
+          addFloatingText(e.x, e.y - 30, '🧸', '#ff8833', 16);
+          game.plushieHits++; game.totalPlushieHits++;
+          // Bounce toward nearest other enemy
+          let nearest = null, nearDist = 999;
+          for (let other of game.enemies) {
+            if (other === e || other.hp <= 0) continue;
+            let nd = Math.sqrt((other.x - game.plushieX) ** 2 + (other.y - game.plushieY) ** 2);
+            if (nd < nearDist) { nearDist = nd; nearest = other; }
+          }
+          if (nearest && nearDist < 200) {
+            let a = Math.atan2(nearest.y - game.plushieY, nearest.x - game.plushieX);
+            game.plushieVX = Math.cos(a) * 9; game.plushieVY = Math.sin(a) * 9;
+          }
+          if (e.hp <= 0) { game.score += e.score; game.waveEnemiesKilled++; game.totalKills++; spawnPowerup(e.x, e.y); game.crowdMeter = Math.min(game.crowdMax, game.crowdMeter + 3 * game.crowdFillRate); }
+          break;
+        }
+      }
+      game.enemies = game.enemies.filter(e => e.hp > 0);
+    } else {
+      // Return to Punch
+      let dx = punch.x - game.plushieX, dy = punch.y - game.plushieY;
+      let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      game.plushieVX = (dx / dist) * 12; game.plushieVY = (dy / dist) * 12;
+      game.plushieX += game.plushieVX; game.plushieY += game.plushieVY;
+      if (dist < 25) { game.plushieOut = false; checkAchievements(); }
+    }
+  }
+
+  // Powerups
+  for (let pu of game.powerups) {
+    pu.life -= dt;
+    let dx = punch.x - pu.x, dy = punch.y - pu.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 30) {
+      if (pu.type === 'banana') { game.score += 50; addFloatingText(pu.x, pu.y - 20, '+50 🍌', '#ffdd44', 18); }
+      else if (pu.type === 'heart') { game.lives = Math.min(game.maxLives, game.lives + 1); addFloatingText(pu.x, pu.y - 20, '+1 ❤️', '#ff4466', 22); }
+      else if (pu.type === 'plushie') { punch.punchDamage = punch.baseDamage * 3; setTimeout(() => { punch.punchDamage = punch.baseDamage; }, 5000); addFloatingText(pu.x, pu.y - 20, '💪 Power Up!', '#ff8833', 20); }
+      spawnParticles(pu.x, pu.y, 8, '#ffdd44', 'star'); pu.life = 0; updateHUD();
+    }
+  }
+  game.powerups = game.powerups.filter(p => p.life > 0);
+
+  // Particles & Floating texts
+  for (let p of game.particles) { p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= p.decay; p.rot += p.rotSpeed; p.size *= 0.99; }
+  game.particles = game.particles.filter(p => p.life > 0);
+  for (let ft of game.floatingTexts) { ft.y += ft.vy; ft.life -= ft.decay; }
+  game.floatingTexts = game.floatingTexts.filter(ft => ft.life > 0);
+}
+
+// =====================================================
+//  RENDER
+// =====================================================
+function render() {
+  ctx.save();
+  if (game.shakeTimer > 0) ctx.translate((Math.random() - 0.5) * game.shakeIntensity, (Math.random() - 0.5) * game.shakeIntensity);
+
+  drawBackground();
+
+  // Wave progress
+  if (game.state === 'playing') {
+    let progress = game.waveEnemiesKilled / game.waveEnemiesTotal;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(200, H - 18, W - 400, 10);
+    ctx.fillStyle = '#ffaa33'; ctx.fillRect(200, H - 18, (W - 400) * progress, 10);
+    ctx.font = '10px Nunito'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(`${game.waveEnemiesKilled} / ${game.waveEnemiesTotal}`, W / 2, H - 10);
+  }
+
+  // HUD bars
+  if (game.state === 'playing') {
+    let barX = 16, barY = H - 82;
+    // Shield [E]
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(barX, barY, 80, 8);
+    let cd = 1 - (game.shieldCooldown / game.shieldCooldownMax);
+    ctx.fillStyle = cd >= 1 ? '#66ccff' : '#446688'; ctx.fillRect(barX, barY, 80 * Math.max(0, cd), 8);
+    ctx.font = '10px Nunito'; ctx.fillStyle = '#aaddff'; ctx.textAlign = 'left'; ctx.fillText('Shield [E]', barX, barY - 4);
+
+    // Super [Q]
+    barY += 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(barX, barY, 80, 8);
+    let sp = Math.min(game.combo / 10, 1);
+    ctx.fillStyle = sp >= 1 ? '#ff4400' : '#664422'; ctx.fillRect(barX, barY, 80 * sp, 8);
+    ctx.fillStyle = sp >= 1 ? '#ff6633' : '#886644'; ctx.fillText('Super [Q]' + (sp >= 1 ? ' !' : ''), barX, barY - 4);
+
+    // Dash [Shift]
+    barY += 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(barX, barY, 80, 8);
+    let dc = 1 - (game.dashCooldown / game.dashCooldownMax);
+    ctx.fillStyle = dc >= 1 ? '#88ddff' : '#446688'; ctx.fillRect(barX, barY, 80 * Math.max(0, dc), 8);
+    ctx.fillStyle = '#88ddff'; ctx.fillText('Dash [Shift]', barX, barY - 4);
+
+    // Plushie [F]
+    barY += 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(barX, barY, 80, 8);
+    let pc = game.plushieOut ? 0 : 1 - (game.plushieCooldown / 3);
+    ctx.fillStyle = pc >= 1 ? '#ff8833' : '#664422'; ctx.fillRect(barX, barY, 80 * Math.max(0, pc), 8);
+    ctx.fillStyle = '#ff8833'; ctx.fillText('Throw [F]', barX, barY - 4);
+
+    // Feature 7: Crowd Meter (right side)
+    let cmX = W - 96, cmY = H - 82, cmW = 80, cmH = 50;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(cmX, cmY, cmW, cmH);
+    let cmFill = game.crowdMeter / game.crowdMax;
+    ctx.fillStyle = `hsl(${40 + cmFill * 20}, 90%, ${50 + cmFill * 20}%)`;
+    ctx.fillRect(cmX, cmY + cmH * (1 - cmFill), cmW, cmH * cmFill);
+    ctx.strokeStyle = 'rgba(255,200,100,0.4)'; ctx.lineWidth = 1; ctx.strokeRect(cmX, cmY, cmW, cmH);
+    ctx.font = '9px Nunito'; ctx.fillStyle = '#ffcc88'; ctx.textAlign = 'center';
+    ctx.fillText('CROWD', cmX + cmW / 2, cmY - 4);
+    ctx.fillText('#HangInTherePunch', cmX + cmW / 2, cmY + cmH + 10);
+    // Crowd faces
+    let faces = ['😀','🙂','😮','🤩','😍'];
+    let faceIdx = Math.floor(cmFill * (faces.length - 1));
+    ctx.font = '18px Arial'; ctx.fillText(faces[faceIdx], cmX + cmW / 2, cmY + cmH / 2 + 6);
+  }
+
+  drawPowerups();
+  drawProjectiles();
+
+  // Sort entities by Y
+  let entities = [...game.enemies.map(e => ({ ...e, isEnemy: true }))];
+  entities.push({ ...punch, isEnemy: false, y: punch.y });
+  entities.sort((a, b) => a.y - b.y);
+  for (let ent of entities) { if (ent.isEnemy) drawEnemy(ent); else drawPunch(punch); }
+
+  drawPlushieProjectile();
+  drawParticles();
+  drawFloatingTexts();
+
+  // Punch range arc
+  if (punch.punching) {
+    ctx.save(); ctx.translate(punch.x, punch.y);
+    ctx.globalAlpha = 0.15; ctx.fillStyle = '#ffaa00';
+    let pa = punch.aimAngle; // 360° arc toward mouse!
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, punch.punchRange, pa - punch.punchArc / 2, pa + punch.punchArc / 2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// =====================================================
+//  SCREENS
+// =====================================================
+function showGameOver() {
+  stopBGM();
+  saveHighScore(game.score, game.wave, game.maxCombo);
+  checkAchievements();
+  document.getElementById('gameOverScreen').classList.remove('hidden');
+  document.getElementById('finalScore').textContent = Math.floor(game.score);
+  document.getElementById('finalWave').textContent = game.wave;
+  document.getElementById('finalCombo').textContent = game.maxCombo;
+  renderHighScores('highscoreList');
+  renderAchievements('achievementsList');
+}
+
+function startGame() {
+  initAudio();
+  game.state = 'playing'; game.score = 0; game.lives = 3; game.maxLives = 3;
+  game.combo = 0; game.maxCombo = 0; game.totalKills = 0; game.totalDashes = 0; game.totalPlushieHits = 0;
+  game.enemies = []; game.particles = []; game.floatingTexts = []; game.powerups = []; game.projectiles = [];
+  game.punchCooldown = 0; game.shieldActive = false; game.shieldTimer = 0; game.shieldCooldown = 0;
+  game.shieldDuration = 2; game.shieldCooldownMax = 8;
+  game.superPunchReady = false; game.invincibleTimer = 0; game.time = 0;
+  game.dashCooldown = 0; game.dashCooldownMax = 1.2; game.dashing = false;
+  game.plushieOut = false; game.plushieCooldown = 0; game.plushieDamage = 2;
+  game.crowdMeter = 0; game.crowdMeterFilled = false; game.crowdFillRate = 1;
+  game.comboBonus = 0.1; game.knockbackMult = 1;
+  game.waveDamageTaken = false;
+  punch.x = W / 2; punch.y = H / 2 + 80;
+  punch.speed = 4.8; punch.baseDamage = 1; punch.punchDamage = 1;
+  punch.punchRange = 55; punch.punchArc = Math.PI * 0.7; punch.punching = false;
+  startWave(1); updateHUD();
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  startBGM();
+}
+
+// =====================================================
+//  GAME LOOP
+// =====================================================
+let lastTime = 0;
+function gameLoop(timestamp) {
+  let dt = Math.min((timestamp - lastTime) / 1000, 0.05); lastTime = timestamp;
+  update(dt); render();
+  requestAnimationFrame(gameLoop);
+}
+
+// =====================================================
+//  INPUT
+// =====================================================
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (game.state === 'playing') {
+    if (e.code === 'Space') { e.preventDefault(); doPunch(); }
+    if (e.code === 'KeyE') activateShield();
+    if (e.code === 'KeyQ') doSuperPunch();
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { e.preventDefault(); doDash(); }
+    if (e.code === 'KeyF') doPlushieThrow();
+  }
+});
+document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+canvas.addEventListener('click', (e) => {
+  if (game.state === 'playing') {
+    let rect = canvas.getBoundingClientRect();
+    let scaleX = W / rect.width, scaleY = H / rect.height;
+    mouseX = (e.clientX - rect.left) * scaleX;
+    mouseY = (e.clientY - rect.top) * scaleY;
+    inputMode = 'mouse'; // Switch to mouse mode on click
+    punch.aimAngle = Math.atan2(mouseY - punch.y, mouseX - punch.x);
+    punch.facing = Math.cos(punch.aimAngle) >= 0 ? 1 : -1;
+    doPunch();
+  }
+});
+canvas.addEventListener('mousemove', (e) => {
+  let rect = canvas.getBoundingClientRect();
+  let scaleX = W / rect.width, scaleY = H / rect.height;
+  mouseX = (e.clientX - rect.left) * scaleX;
+  mouseY = (e.clientY - rect.top) * scaleY;
+  inputMode = 'mouse'; // Switch to mouse mode when mouse moves
+  punch.aimAngle = Math.atan2(mouseY - punch.y, mouseX - punch.x);
+  punch.facing = Math.cos(punch.aimAngle) >= 0 ? 1 : -1;
+});
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
