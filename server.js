@@ -820,15 +820,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.url === '/exchange') {
-    fs.readFile(path.join(__dirname, 'exchange.html'), (err, data) => {
-      if (err) { res.writeHead(500); res.end('Error'); return; }
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(data);
-    });
-    return;
-  }
-
   if (req.url === '/lobby-bg.jpg') {
     fs.readFile(path.join(__dirname, 'lobby-bg.jpg'), (err, data) => {
       if (err) { res.writeHead(500); res.end('Error'); return; }

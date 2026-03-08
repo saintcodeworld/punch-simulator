@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monkey Arena PvP — Solana Web3 Brawler</title>
+<title>Punch vs Lulu PVP</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@700;900&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -60,7 +60,6 @@
   .btn.danger { background: linear-gradient(180deg, #8b3030 0%, #5c1a1a 100%); border-color: #7a2828; }
   .btn.gold { background: linear-gradient(180deg, #f5c842 0%, #c89e1e 100%); border-color: #dab230; color: #2a1e08; }
   .btn.jungle { background: linear-gradient(180deg, #3a7a30 0%, #2a5a20 100%); border-color: #4a8a3a; }
-  .btn.exchange { background: linear-gradient(180deg, #e8a020 0%, #b87a10 100%); border-color: #d09018; color: #1a1207; }
   .btn.account { background: linear-gradient(180deg, #6b5530 0%, #4a3a1e 100%); border-color: #7a6238; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
 
@@ -349,9 +348,9 @@
   <!-- AUTH SCREEN -->
   <div id="authScreen" class="screen-overlay">
     <div class="punch-ascii">🐵</div>
-    <div class="screen-title">Monkey Arena</div>
-    <div class="screen-subtitle">Solana-powered PvP Brawler — 1v1, 2v2, 3v3 Monkey Battles</div>
-    <div class="sol-badge"><span class="sol-dot"></span> Built on Solana</div>
+    <div class="screen-title">Punch vs Lulu PVP</div>
+    <div class="screen-subtitle">Punch vs Lulu  — 1v1, 2v2, 3v3</div>
+    <div class="sol-badge"><span class="sol-dot"></span> Powered by Solana</div>
     <div style="height:14px;"></div>
     <div class="auth-box">
       <div id="authTitle" style="font-family:'Bungee',cursive;font-size:20px;color:#f5e6c8;margin-bottom:6px;">Sign Up</div>
@@ -410,8 +409,8 @@
     <div style="padding:20px 0;width:90%;max-width:900px;">
       <div style="text-align:center;">
         <div class="punch-ascii" style="font-size:42px;">🐵</div>
-        <div class="screen-title" style="font-size:32px;">Monkey Arena</div>
-        <div class="sol-badge" style="margin-bottom:10px;"><span class="sol-dot"></span> Solana PvP</div>
+        <div class="screen-title" style="font-size:32px;">Punch vs Lulu PVP</div>
+        <div class="sol-badge" style="margin-bottom:10px;"><span class="sol-dot"></span>On chain web3 game</div>
       </div>
       <div class="user-info" id="userInfoBar"></div>
       <div class="nav-bar">
@@ -420,7 +419,6 @@
         <button class="btn small danger" onclick="showWithdraw()">Withdraw</button>
         <button class="btn small secondary" onclick="showLeaderboard()">Leaderboard</button>
         <button class="btn small secondary" onclick="showHistory()">My History</button>
-        <button class="btn small exchange" onclick="goToExchange()">Punch Exchange</button>
         <button class="btn small account" onclick="showAccountModal()">Account</button>
       </div>
       <div style="font-family:'Bungee',cursive;font-size:14px;color:#b89a60;margin:14px 0 8px;text-align:center;letter-spacing:1px;">Available Lobbies</div>
