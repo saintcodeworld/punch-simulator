@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punch vs Lulu PVP</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1207;
+    min-height: 100vh;
+    font-family: 'Nunito', sans-serif;
+    color: #e8d5b0;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* ===== HEADER ===== */
+  .exchange-header {
+    width: 100%; padding: 20px 30px;
+    background: linear-gradient(180deg, #2e2210 0%, #1a1207 100%);
+    border-bottom: 2px solid #3d2e14;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .exchange-header .logo {
+    font-family: 'Bungee', cursive; font-size: 22px; color: #f5c842;
+    text-shadow: 0 2px 0 #8b6914; letter-spacing: 2px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .exchange-header .logo span { font-size: 28px; }
+  .back-link {
+    font-family: 'Bungee', cursive; font-size: 12px; color: #b89a60;
+    text-decoration: none; letter-spacing: 1px; padding: 8px 20px;
+    border: 2px solid #5c4a28; border-radius: 8px;
+    background: linear-gradient(180deg, #3a2e18 0%, #2a1e10 100%);
+    transition: all 0.15s; cursor: pointer;
+  }
+  .back-link:hover { border-color: #f5c842; color: #f5c842; }
+
+  .sol-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.3); border: 1px solid #3d2e14;
+    border-radius: 6px; padding: 3px 10px; font-size: 11px; color: #8a7650;
+    font-family: 'Bungee', cursive; letter-spacing: 1px;
+  }
+  .sol-badge .sol-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #9945FF;
+    display: inline-block;
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .exchange-content {
+    flex: 1; width: 100%; max-width: 800px; padding: 40px 20px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .exchange-title {
+    font-family: 'Bungee', cursive; font-size: 36px; color: #f5c842;
+    text-shadow: 0 3px 0 #8b6914, 0 6px 20px rgba(200, 150, 30, 0.3);
+    margin-bottom: 6px; letter-spacing: 2px; text-align: center;
+  }
+  .exchange-subtitle {
+    font-size: 15px; color: #8a7650; text-align: center; margin-bottom: 30px;
+    max-width: 500px; line-height: 1.6;
+  }
+  .jungle-divider {
+    width: 200px; height: 2px; margin: 16px auto;
+    background: linear-gradient(90deg, transparent, #5c4a28, transparent);
+  }
+
+  /* ===== EXCHANGE BOX ===== */
+  .exchange-box {
+    background: linear-gradient(180deg, rgba(60,45,20,0.7) 0%, rgba(30,22,10,0.85) 100%);
+    border: 2px solid #5c4a28; border-radius: 16px; padding: 30px;
+    width: 100%; max-width: 480px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .exchange-box-title {
+    font-family: 'Bungee', cursive; font-size: 14px; color: #b89a60;
+    letter-spacing: 1px; text-align: center; margin-bottom: 20px;
+  }
+
+  .swap-row {
+    background: rgba(0,0,0,0.3); border: 1px solid #3d2e14;
+    border-radius: 10px; padding: 16px; margin-bottom: 12px;
+  }
+  .swap-row-label {
+    font-family: 'Bungee', cursive; font-size: 10px; color: #6b5530;
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .swap-row-inner {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .swap-row input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #f5e6c8; font-size: 28px; font-family: 'Bungee', cursive;
+    width: 100%;
+  }
+  .swap-row input::placeholder { color: rgba(184,154,96,0.25); }
+  .swap-token {
+    background: rgba(200,146,30,0.15); border: 1px solid rgba(200,146,30,0.3);
+    border-radius: 8px; padding: 6px 14px; font-family: 'Bungee', cursive;
+    font-size: 13px; color: #f5c842; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .swap-token .token-icon { font-size: 18px; }
+
+  .swap-arrow {
+    display: flex; justify-content: center; margin: -6px 0;
+    position: relative; z-index: 2;
+  }
+  .swap-arrow-btn {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(180deg, #5c4a28 0%, #3d2e14 100%);
+    border: 2px solid #6b5530; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; font-size: 16px;
+    color: #f5c842; transition: all 0.15s;
+  }
+  .swap-arrow-btn:hover { border-color: #f5c842; transform: rotate(180deg); }
+
+  .exchange-btn {
+    width: 100%; padding: 16px; margin-top: 16px;
+    background: linear-gradient(180deg, #f5c842 0%, #c89e1e 100%);
+    border: 2px solid #dab230; border-radius: 10px; cursor: pointer;
+    font-family: 'Bungee', cursive; font-size: 16px; color: #2a1e08;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    transition: all 0.15s;
+  }
+  .exchange-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
+  .exchange-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  .exchange-info {
+    margin-top: 24px; text-align: center; color: #6b5530; font-size: 13px; line-height: 1.8;
+  }
+  .exchange-info strong { color: #b89a60; }
+
+  /* ===== COMING SOON OVERLAY ===== */
+  .coming-soon-badge {
+    background: rgba(200,146,30,0.12); border: 1px solid #5c4a28;
+    border-radius: 10px; padding: 16px 30px; text-align: center; margin-top: 20px;
+  }
+  .coming-soon-badge .cs-title {
+    font-family: 'Bungee', cursive; font-size: 16px; color: #f5c842;
+    letter-spacing: 1px;
+  }
+  .coming-soon-badge .cs-desc {
+    font-size: 13px; color: #8a7650; margin-top: 4px;
+  }
+
+  /* ===== FOOTER ===== */
+  .exchange-footer {
+    padding: 20px; text-align: center; color: #3d2e14; font-size: 12px;
+    font-family: 'Bungee', cursive; letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="exchange-header">
+  <div class="logo"><span>🍌</span> Punch Exchange</div>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <div class="sol-badge"><span class="sol-dot"></span> Solana</div>
+    <a class="back-link" href="/">Back to Arena</a>
+  </div>
+</div>
+
+<div class="exchange-content">
+  <div style="font-size:48px;margin-bottom:8px;">🍌</div>
+  <div class="exchange-title">Punch Exchange</div>
+  <div class="exchange-subtitle">Swap your in-game $PUNCH tokens on the Solana blockchain</div>
+
+  <div class="exchange-box">
+    <div class="exchange-box-title">Swap Tokens</div>
+
+    <div class="swap-row">
+      <div class="swap-row-label">You Pay</div>
+      <div class="swap-row-inner">
+        <input type="number" placeholder="0.00" id="fromAmount" step="any" min="0">
+        <div class="swap-token"><span class="token-icon">◎</span> SOL</div>
+      </div>
+    </div>
+
+    <div class="swap-arrow">
+      <div class="swap-arrow-btn" onclick="swapDirection()">↓</div>
+    </div>
+
+    <div class="swap-row">
+      <div class="swap-row-label">You Receive</div>
+      <div class="swap-row-inner">
+        <input type="number" placeholder="0.00" id="toAmount" step="any" min="0" readonly>
+        <div class="swap-token"><span class="token-icon">🍌</span> PUNCH</div>
+      </div>
+    </div>
+
+    <button class="exchange-btn" disabled id="swapBtn">Coming Soon</button>
+  </div>
+
+  <div class="coming-soon-badge">
+    <div class="cs-title">API Integration Pending</div>
+    <div class="cs-desc">The exchange API will be connected here to enable live swaps between SOL and $PUNCH tokens.</div>
+  </div>
+
+  <div class="exchange-info">
+    <strong>How it works:</strong><br>
+    Earn $PUNCH tokens by winning battles in Monkey Arena.<br>
+    Swap $PUNCH for SOL or SOL for $PUNCH right here.<br>
+    All transactions are settled on the Solana blockchain.
+  </div>
+</div>
+
+<div class="exchange-footer">Monkey Arena &copy; 2026</div>
+
+<script>
+let reversed = false;
+function swapDirection() {
+  reversed = !reversed;
+  let fromLabel = document.querySelector('.swap-row:first-of-type .swap-token');
+  let toLabel = document.querySelector('.swap-row:last-of-type .swap-token');
+  if (reversed) {
+    fromLabel.innerHTML = '<span class="token-icon">🍌</span> PUNCH';
+    toLabel.innerHTML = '<span class="token-icon">◎</span> SOL';
+  } else {
+    fromLabel.innerHTML = '<span class="token-icon">◎</span> SOL';
+    toLabel.innerHTML = '<span class="token-icon">🍌</span> PUNCH';
+  }
+  document.getElementById('fromAmount').value = '';
+  document.getElementById('toAmount').value = '';
+}
+</script>
+</body>
+</html>

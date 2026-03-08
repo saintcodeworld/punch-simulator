@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monkey Arena PvP — Solana Web3 Brawler</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1207;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh;
+    font-family: 'Nunito', sans-serif;
+    overflow: hidden;
+    color: #e8d5b0;
+  }
+  #gameWrapper { position: relative; width: 1600px; height: 1000px; max-width: 100vw; max-height: 100vh; }
+  canvas {
+    display: block; border-radius: 12px; width: 100%; height: 100%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 0 80px rgba(0,0,0,0.2);
+    background: #1a1207;
+    border: 2px solid #3d2e14;
+  }
+  .hidden { display: none !important; }
+
+  /* ===== SCREEN OVERLAYS ===== */
+  .screen-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(15, 10, 4, 0.88);
+    z-index: 20; pointer-events: all;
+    overflow-y: auto;
+    backdrop-filter: blur(6px);
+  }
+  .screen-title {
+    font-family: 'Bungee', cursive; font-size: 44px; color: #f5c842;
+    text-shadow: 0 3px 0 #8b6914, 0 6px 20px rgba(200, 150, 30, 0.3);
+    margin-bottom: 6px; letter-spacing: 2px;
+  }
+  .screen-subtitle {
+    font-size: 15px; color: #b89a60; margin-bottom: 18px;
+    text-align: center; max-width: 700px; line-height: 1.6;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    pointer-events: all;
+    background: linear-gradient(180deg, #c8921e 0%, #8b6514 100%);
+    color: #fff; border: 2px solid #a07818; padding: 13px 44px; font-size: 17px;
+    font-family: 'Bungee', cursive; border-radius: 10px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+    transition: all 0.15s; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 10px;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); background: linear-gradient(180deg, #d9a228 0%, #9b7018 100%); }
+  .btn:active { transform: translateY(1px); box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+  .btn.ready { background: linear-gradient(180deg, #5a9e3a 0%, #3d7024 100%); border-color: #4a8a2e; }
+  .btn.small { padding: 9px 24px; font-size: 12px; }
+  .btn.secondary { background: linear-gradient(180deg, #5c4a2a 0%, #3a2e18 100%); border-color: #6b5530; }
+  .btn.danger { background: linear-gradient(180deg, #8b3030 0%, #5c1a1a 100%); border-color: #7a2828; }
+  .btn.gold { background: linear-gradient(180deg, #f5c842 0%, #c89e1e 100%); border-color: #dab230; color: #2a1e08; }
+  .btn.jungle { background: linear-gradient(180deg, #3a7a30 0%, #2a5a20 100%); border-color: #4a8a3a; }
+  .btn.exchange { background: linear-gradient(180deg, #e8a020 0%, #b87a10 100%); border-color: #d09018; color: #1a1207; }
+  .btn.account { background: linear-gradient(180deg, #6b5530 0%, #4a3a1e 100%); border-color: #7a6238; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  .controls-info {
+    margin-top: 20px; color: rgba(184,154,96,0.6); font-size: 13px;
+    text-align: center; line-height: 2;
+  }
+  .controls-info kbd {
+    background: rgba(200,160,50,0.12); border: 1px solid rgba(200,160,50,0.3);
+    border-radius: 4px; padding: 2px 7px; font-family: 'Nunito', sans-serif; font-size: 12px;
+    color: #d4b060;
+  }
+  .punch-ascii { font-size: 64px; margin-bottom: 8px; }
+
+  /* ===== AUTH SCREEN ===== */
+  .auth-box {
+    background: linear-gradient(180deg, rgba(60,45,20,0.8) 0%, rgba(30,22,10,0.9) 100%);
+    border: 2px solid #5c4a28; border-radius: 16px; padding: 30px 40px;
+    text-align: center; max-width: 420px; width: 90%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .auth-box input {
+    width: 100%; padding: 14px 18px; border-radius: 10px;
+    border: 2px solid #5c4a28; background: rgba(20,15,6,0.7);
+    color: #f5e6c8; font-size: 18px; font-family: 'Nunito', sans-serif;
+    outline: none; margin: 10px 0; text-align: center;
+  }
+  .auth-box input::placeholder { color: rgba(184,154,96,0.4); }
+  .auth-box input:focus { border-color: #f5c842; }
+  .auth-error { color: #d45050; font-size: 13px; margin-top: 6px; min-height: 18px; }
+  .auth-toggle { color: #8a7650; font-size: 13px; margin-top: 12px; cursor: pointer; }
+  .auth-toggle span { color: #f5c842; text-decoration: underline; }
+
+  /* ===== WALLET / ACCOUNT MODAL ===== */
+  .wallet-modal {
+    background: linear-gradient(180deg, #2e2210 0%, #1a1207 100%);
+    border: 2px solid #f5c842; border-radius: 16px; padding: 30px;
+    max-width: 500px; width: 90%; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  .wallet-key {
+    background: rgba(0,0,0,0.5); border: 1px solid #4a3a1e;
+    border-radius: 8px; padding: 10px; margin: 8px 0; word-break: break-all;
+    font-family: 'Courier New', monospace; font-size: 12px; color: #a0cc60; user-select: all;
+  }
+  .wallet-warning { color: #d4903a; font-size: 12px; margin: 8px 0; }
+
+  /* ===== ACCOUNT MODAL ===== */
+  .account-modal {
+    background: linear-gradient(180deg, #2e2210 0%, #1a1207 100%);
+    border: 2px solid #6b5530; border-radius: 16px; padding: 30px;
+    max-width: 500px; width: 90%; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  .account-modal .account-field {
+    text-align: left; margin: 12px 0;
+  }
+  .account-modal .account-label {
+    font-family: 'Bungee', cursive; font-size: 11px; color: #8a7650;
+    letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .account-modal .account-value {
+    background: rgba(0,0,0,0.4); border: 1px solid #4a3a1e;
+    border-radius: 8px; padding: 10px 14px; font-family: 'Courier New', monospace;
+    font-size: 13px; color: #d4b060; word-break: break-all; user-select: all;
+  }
+  .account-modal .account-value.key-green { color: #a0cc60; }
+  .account-modal .account-value.key-red { color: #d47050; }
+  .account-stats {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 14px 0;
+  }
+  .account-stat {
+    background: rgba(0,0,0,0.3); border: 1px solid #3d2e14;
+    border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 80px;
+  }
+  .account-stat .stat-val {
+    font-family: 'Bungee', cursive; font-size: 20px; color: #f5c842;
+  }
+  .account-stat .stat-label {
+    font-size: 10px; color: #8a7650; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;
+  }
+
+  /* ===== LOBBY BROWSER ===== */
+  .lobby-browser { width: 90%; max-width: 900px; }
+  .nav-bar {
+    display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap;
+  }
+  .nav-bar .btn { margin: 0; }
+  .user-info {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    background: linear-gradient(180deg, rgba(60,45,20,0.5) 0%, rgba(30,22,10,0.5) 100%);
+    border: 1px solid #3d2e14; border-radius: 10px; padding: 10px 20px;
+    justify-content: center; flex-wrap: wrap;
+  }
+  .user-info .username { font-family: 'Bungee', cursive; color: #f5c842; font-size: 16px; }
+  .user-info .rating { color: #b89a60; font-size: 14px; }
+  .user-info .wallet-addr { color: #a0cc60; font-size: 11px; font-family: 'Courier New', monospace; }
+  .lobby-list {
+    display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;
+    padding: 4px;
+  }
+  .lobby-list::-webkit-scrollbar { width: 6px; }
+  .lobby-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 3px; }
+  .lobby-list::-webkit-scrollbar-thumb { background: #5c4a28; border-radius: 3px; }
+  .lobby-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg, rgba(60,45,20,0.4) 0%, rgba(40,30,14,0.5) 100%);
+    border: 2px solid #3d2e14; border-radius: 10px; padding: 14px 20px;
+    transition: all 0.2s; cursor: pointer;
+  }
+  .lobby-card:hover { border-color: #f5c842; background: rgba(100,80,30,0.3); }
+  .lobby-card .lc-left { display: flex; align-items: center; gap: 14px; }
+  .lobby-card .lc-mode {
+    background: rgba(200,146,30,0.15); border: 1px solid rgba(200,146,30,0.4);
+    border-radius: 6px; padding: 4px 12px; font-family: 'Bungee', cursive;
+    font-size: 14px; color: #f5c842; min-width: 50px; text-align: center;
+  }
+  .lobby-card .lc-name { font-weight: 700; color: #e8d5b0; font-size: 15px; }
+  .lobby-card .lc-host { color: #8a7650; font-size: 12px; }
+  .lobby-card .lc-players { color: #f5c842; font-family: 'Bungee', cursive; font-size: 15px; }
+  .lobby-card .lc-status { font-size: 11px; }
+  .lobby-empty { color: #5c4a28; text-align: center; padding: 40px; font-size: 16px; }
+
+  /* ===== CREATE LOBBY MODAL ===== */
+  .create-lobby-box {
+    background: linear-gradient(180deg, rgba(60,45,20,0.8) 0%, rgba(30,22,10,0.9) 100%);
+    border: 2px solid #5c4a28; border-radius: 16px; padding: 30px;
+    text-align: center; max-width: 450px; width: 90%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .mode-selector { display: flex; gap: 10px; justify-content: center; margin: 16px 0; }
+  .mode-btn {
+    background: rgba(40,30,14,0.6); border: 2px solid #3d2e14;
+    border-radius: 12px; padding: 16px 24px; cursor: pointer; transition: all 0.2s;
+    text-align: center; min-width: 100px;
+  }
+  .mode-btn:hover { border-color: #c8921e; }
+  .mode-btn.selected { border-color: #f5c842; background: rgba(200,146,30,0.15); }
+  .mode-btn .mb-mode { font-family: 'Bungee', cursive; font-size: 20px; color: #f5c842; }
+  .mode-btn .mb-desc { font-size: 11px; color: #8a7650; margin-top: 4px; }
+
+  /* ===== IN-LOBBY PLAYERS ===== */
+  #inLobbyPlayers {
+    display: flex; gap: 14px; margin: 16px 0; flex-wrap: wrap; justify-content: center;
+  }
+  .lobby-player {
+    background: rgba(40,30,14,0.6); border: 2px solid #3d2e14;
+    border-radius: 12px; padding: 12px 20px; text-align: center; min-width: 120px;
+    transition: all 0.3s;
+  }
+  .lobby-player.ready { border-color: #5a9e3a; background: rgba(90,158,58,0.1); }
+  .lobby-player.you { border-color: #f5c842; }
+  .lobby-player.team1 { box-shadow: inset 0 0 20px rgba(200,100,40,0.15); }
+  .lobby-player.team2 { box-shadow: inset 0 0 20px rgba(60,120,200,0.15); }
+  .lobby-player .lp-name { font-family: 'Bungee', cursive; font-size: 14px; margin-top: 4px; }
+  .lobby-player .lp-emoji { font-size: 32px; }
+  .lobby-player .lp-status { font-size: 11px; margin-top: 4px; opacity: 0.6; }
+  .lobby-player .lp-team { font-size: 10px; font-weight: 700; margin-top: 2px; }
+
+  /* ===== LEADERBOARD ===== */
+  .leaderboard-table { width: 90%; max-width: 700px; border-collapse: collapse; margin: 12px 0; }
+  .leaderboard-table th {
+    font-family: 'Bungee', cursive; color: #f5c842; padding: 8px 12px;
+    border-bottom: 2px solid #3d2e14; font-size: 12px; text-align: left;
+    letter-spacing: 1px;
+  }
+  .leaderboard-table td {
+    padding: 8px 12px; color: #d4c4a0; font-size: 14px;
+    border-bottom: 1px solid rgba(61,46,20,0.5);
+  }
+  .leaderboard-table tr.top1 td { color: #f5c842; font-weight: 900; }
+  .leaderboard-table tr.top2 td { color: #c0b090; font-weight: 700; }
+  .leaderboard-table tr.top3 td { color: #b08050; font-weight: 700; }
+  .lb-prize { font-size: 12px; color: #a0cc60; }
+
+  /* ===== GAME HISTORY ===== */
+  .history-table { width: 90%; max-width: 700px; border-collapse: collapse; margin: 12px 0; }
+  .history-table th {
+    font-family: 'Bungee', cursive; color: #d4903a; padding: 8px 12px;
+    border-bottom: 2px solid #3d2e14; font-size: 11px; text-align: left;
+    letter-spacing: 1px;
+  }
+  .history-table td {
+    padding: 6px 12px; color: #c4b490; font-size: 13px;
+    border-bottom: 1px solid rgba(61,46,20,0.4);
+  }
+
+  /* ===== FIXED UI ELEMENTS ===== */
+  #soundToggle {
+    position: fixed; bottom: 20px; right: 20px; z-index: 100;
+    background: rgba(30,22,10,0.8); border: 1px solid #3d2e14;
+    border-radius: 6px; padding: 4px 8px; color: #b89a60; cursor: pointer;
+    font-size: 16px; pointer-events: all;
+  }
+  #connStatus {
+    position: fixed; bottom: 20px; left: 20px; z-index: 100;
+    background: rgba(30,22,10,0.8); border: 1px solid #3d2e14;
+    border-radius: 6px; padding: 4px 12px; color: #d45050; font-size: 12px;
+    font-family: 'Bungee', cursive; letter-spacing: 1px;
+  }
+  #connStatus.connected { color: #7ab840; }
+  .back-btn {
+    position: absolute; top: 20px; left: 20px; z-index: 30;
+    background: rgba(30,22,10,0.8); border: 1px solid #5c4a28;
+    border-radius: 6px; padding: 6px 14px; color: #b89a60; cursor: pointer;
+    font-size: 13px; font-family: 'Bungee', cursive; letter-spacing: 1px;
+  }
+  .back-btn:hover { background: rgba(100,80,30,0.3); border-color: #f5c842; }
+
+  /* ===== DECORATIVE DIVIDER ===== */
+  .jungle-divider {
+    width: 200px; height: 2px; margin: 10px auto;
+    background: linear-gradient(90deg, transparent, #5c4a28, transparent);
+  }
+
+  /* ===== SOLANA BADGE ===== */
+  .sol-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.3); border: 1px solid #3d2e14;
+    border-radius: 6px; padding: 3px 10px; font-size: 11px; color: #8a7650;
+    font-family: 'Bungee', cursive; letter-spacing: 1px;
+  }
+  .sol-badge .sol-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #9945FF;
+    display: inline-block;
+  }
+  .sol-icon {
+    display: inline-block; vertical-align: middle; width: 14px; height: 14px; margin-right: 2px;
+  }
+  .sol-icon-sm {
+    display: inline-block; vertical-align: middle; width: 12px; height: 12px; margin-right: 1px;
+  }
+
+  /* ===== FEE SELECTOR ===== */
+  .fee-selector { display: flex; gap: 8px; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .fee-btn {
+    background: rgba(40,30,14,0.6); border: 2px solid #3d2e14;
+    border-radius: 10px; padding: 10px 16px; cursor: pointer; transition: all 0.2s;
+    text-align: center; min-width: 70px;
+  }
+  .fee-btn:hover { border-color: #c8921e; }
+  .fee-btn.selected { border-color: #a0cc60; background: rgba(100,180,60,0.1); }
+  .fee-btn .fb-amount { font-family: 'Bungee', cursive; font-size: 14px; color: #a0cc60; }
+  .fee-btn .fb-label { font-size: 10px; color: #8a7650; margin-top: 2px; }
+
+  /* ===== DEPOSIT / WITHDRAW ===== */
+  .deposit-box, .withdraw-box {
+    background: linear-gradient(180deg, rgba(60,45,20,0.8) 0%, rgba(30,22,10,0.9) 100%);
+    border: 2px solid #5c4a28; border-radius: 16px; padding: 30px 40px;
+    text-align: center; max-width: 450px; width: 90%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .deposit-box input, .withdraw-box input {
+    width: 100%; padding: 14px 18px; border-radius: 10px;
+    border: 2px solid #5c4a28; background: rgba(20,15,6,0.7);
+    color: #a0cc60; font-size: 20px; font-family: 'Bungee', cursive;
+    outline: none; margin: 10px 0; text-align: center;
+  }
+  .deposit-box input:focus, .withdraw-box input:focus { border-color: #a0cc60; }
+  .deposit-box input::placeholder, .withdraw-box input::placeholder { color: rgba(184,154,96,0.4); font-size: 14px; }
+  .deposit-status, .withdraw-status { min-height: 20px; font-size: 13px; margin-top: 8px; }
+  .quick-amounts { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+  .quick-amt {
+    background: rgba(40,30,14,0.6); border: 1px solid #3d2e14;
+    border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.2s;
+    font-family: 'Bungee', cursive; font-size: 12px; color: #a0cc60;
+  }
+  .quick-amt:hover { border-color: #a0cc60; background: rgba(100,180,60,0.1); }
+
+  /* ===== MATCH END ===== */
+  .match-end-box {
+    text-align: center; max-width: 600px; width: 90%;
+  }
+  .match-prize {
+    font-family: 'Bungee', cursive; font-size: 18px; color: #a0cc60;
+    margin: 10px 0;
+  }
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas" width="1600" height="1000"></canvas>
+  <div id="connStatus">CONNECTING...</div>
+  <div id="soundToggle" title="Toggle Sound">🔊</div>
+
+  <!-- AUTH SCREEN -->
+  <div id="authScreen" class="screen-overlay">
+    <div class="punch-ascii">🐵</div>
+    <div class="screen-title">Monkey Arena</div>
+    <div class="screen-subtitle">Solana-powered PvP Brawler — 1v1, 2v2, 3v3 Monkey Battles</div>
+    <div class="sol-badge"><span class="sol-dot"></span> Built on Solana</div>
+    <div style="height:14px;"></div>
+    <div class="auth-box">
+      <div id="authTitle" style="font-family:'Bungee',cursive;font-size:20px;color:#f5e6c8;margin-bottom:6px;">Sign Up</div>
+      <div class="jungle-divider"></div>
+      <input type="text" id="authUsername" placeholder="Choose your monkey name" maxlength="20" autocomplete="off">
+      <div class="auth-error" id="authError"></div>
+      <button class="btn gold" id="authBtn" onclick="doAuth()">Create Account</button>
+      <div class="auth-toggle" id="authToggle" onclick="toggleAuthMode()">
+        Already have an account? <span>Log In</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLET MODAL (shown on signup) -->
+  <div id="walletModal" class="screen-overlay hidden">
+    <div class="wallet-modal">
+      <div style="font-size:42px;margin-bottom:8px;">�</div>
+      <div style="font-family:'Bungee',cursive;font-size:20px;color:#f5c842;margin-bottom:4px;">Your Solana Wallet</div>
+      <div style="color:#8a7650;font-size:13px;margin-bottom:14px;">A new wallet has been created for your account</div>
+      <div class="jungle-divider"></div>
+      <div style="text-align:left;margin-top:12px;">
+        <div style="font-family:'Bungee',cursive;font-size:10px;color:#8a7650;letter-spacing:1px;">PUBLIC KEY</div>
+        <div class="wallet-key" id="walletPubKey"></div>
+        <div style="font-family:'Bungee',cursive;font-size:10px;color:#8a7650;letter-spacing:1px;margin-top:8px;">PRIVATE KEY</div>
+        <div class="wallet-key" id="walletPrivKey" style="color:#d47050;"></div>
+      </div>
+      <div class="wallet-warning">Save your private key! It will NOT be shown again.</div>
+      <button class="btn" onclick="closeWalletModal()">I've Saved My Keys</button>
+    </div>
+  </div>
+
+  <!-- ACCOUNT MODAL -->
+  <div id="accountModal" class="screen-overlay hidden">
+    <div class="account-modal">
+      <div style="font-size:42px;margin-bottom:4px;">🐵</div>
+      <div style="font-family:'Bungee',cursive;font-size:20px;color:#f5c842;margin-bottom:2px;" id="accountUsername">Account</div>
+      <div class="jungle-divider"></div>
+      <div class="account-stats" id="accountStats"></div>
+      <div class="account-field">
+        <div class="account-label">Public Key</div>
+        <div class="account-value key-green" id="accountPubKey">—</div>
+      </div>
+      <div class="account-field">
+        <div class="account-label">Private Key</div>
+        <div class="account-value key-red" id="accountPrivKey" style="cursor:pointer;" onclick="togglePrivKeyVisibility()">Click to reveal (stored locally)</div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn small" onclick="closeAccountModal()">Close</button>
+        <button class="btn small danger" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN MENU / LOBBY BROWSER -->
+  <div id="menuScreen" class="screen-overlay hidden">
+    <div style="padding:20px 0;width:90%;max-width:900px;">
+      <div style="text-align:center;">
+        <div class="punch-ascii" style="font-size:42px;">🐵</div>
+        <div class="screen-title" style="font-size:32px;">Monkey Arena</div>
+        <div class="sol-badge" style="margin-bottom:10px;"><span class="sol-dot"></span> Solana PvP</div>
+      </div>
+      <div class="user-info" id="userInfoBar"></div>
+      <div class="nav-bar">
+        <button class="btn small gold" onclick="showCreateLobby()">+ Create Lobby</button>
+        <button class="btn small jungle" onclick="showDeposit()">Deposit</button>
+        <button class="btn small danger" onclick="showWithdraw()">Withdraw</button>
+        <button class="btn small secondary" onclick="showLeaderboard()">Leaderboard</button>
+        <button class="btn small secondary" onclick="showHistory()">My History</button>
+        <button class="btn small exchange" onclick="goToExchange()">Punch Exchange</button>
+        <button class="btn small account" onclick="showAccountModal()">Account</button>
+      </div>
+      <div style="font-family:'Bungee',cursive;font-size:14px;color:#b89a60;margin:14px 0 8px;text-align:center;letter-spacing:1px;">Available Lobbies</div>
+      <div class="jungle-divider"></div>
+      <div class="lobby-list" id="lobbyList"></div>
+    </div>
+  </div>
+
+  <!-- CREATE LOBBY -->
+  <div id="createLobbyScreen" class="screen-overlay hidden">
+    <button class="back-btn" onclick="showMenu()">BACK</button>
+    <div class="create-lobby-box">
+      <div style="font-family:'Bungee',cursive;font-size:20px;color:#f5c842;margin-bottom:4px;">Create Lobby</div>
+      <div style="color:#8a7650;font-size:13px;margin-bottom:6px;">Choose your battle mode</div>
+      <div class="jungle-divider"></div>
+      <div class="mode-selector" id="modeSelector">
+        <div class="mode-btn selected" data-mode="1v1" onclick="selectMode(this)">
+          <div class="mb-mode">1v1</div>
+          <div class="mb-desc">2 players</div>
+        </div>
+        <div class="mode-btn" data-mode="2v2" onclick="selectMode(this)">
+          <div class="mb-mode">2v2</div>
+          <div class="mb-desc">4 players</div>
+        </div>
+        <div class="mode-btn" data-mode="3v3" onclick="selectMode(this)">
+          <div class="mb-mode">3v3</div>
+          <div class="mb-desc">6 players</div>
+        </div>
+      </div>
+      <div style="font-family:'Bungee',cursive;font-size:11px;color:#8a7650;margin-top:10px;letter-spacing:1px;">ENTRY FEE</div>
+      <div class="fee-selector">
+        <div class="fee-btn selected" data-fee="0" onclick="selectEntryFee(this)">
+          <div class="fb-amount">FREE</div>
+          <div class="fb-label">No stake</div>
+        </div>
+        <div class="fee-btn" data-fee="0.02" onclick="selectEntryFee(this)">
+          <div class="fb-amount"><svg class="sol-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none"><path fill="url(#sf1)" d="M18.413 7.902a.62.62 0 0 1-.411.163H3.58c-.512 0-.77-.585-.416-.928l2.369-2.284a.6.6 0 0 1 .41-.169H20.42c.517 0 .77.59.41.935z"/><path fill="url(#sf2)" d="M18.413 19.158a.62.62 0 0 1-.411.158H3.58c-.512 0-.77-.58-.416-.923l2.369-2.29a.6.6 0 0 1 .41-.163H20.42c.517 0 .77.586.41.928z"/><path fill="url(#sf3)" d="M18.413 10.473a.62.62 0 0 0-.411-.158H3.58c-.512 0-.77.58-.416.923l2.369 2.29c.111.103.257.16.41.163H20.42c.517 0 .77-.586.41-.928z"/><defs><linearGradient id="sf1" x1="3" x2="21.5" y1="55" y2="54.9" gradientUnits="userSpaceOnUse"><stop stop-color="#599db0"/><stop offset="1" stop-color="#47f8c3"/></linearGradient><linearGradient id="sf2" x1="3" x2="21.3" y1="9.2" y2="9" gradientUnits="userSpaceOnUse"><stop stop-color="#c44fe2"/><stop offset="1" stop-color="#73b0d0"/></linearGradient><linearGradient id="sf3" x1="4" x2="20.3" y1="12" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#778cbf"/><stop offset="1" stop-color="#5dcdc9"/></linearGradient></defs></g></svg> 0.02</div>
+          <div class="fb-label">SOL</div>
+        </div>
+        <div class="fee-btn" data-fee="0.05" onclick="selectEntryFee(this)">
+          <div class="fb-amount"><svg class="sol-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none"><path fill="url(#sf1)" d="M18.413 7.902a.62.62 0 0 1-.411.163H3.58c-.512 0-.77-.585-.416-.928l2.369-2.284a.6.6 0 0 1 .41-.169H20.42c.517 0 .77.59.41.935z"/><path fill="url(#sf2)" d="M18.413 19.158a.62.62 0 0 1-.411.158H3.58c-.512 0-.77-.58-.416-.923l2.369-2.29a.6.6 0 0 1 .41-.163H20.42c.517 0 .77.586.41.928z"/><path fill="url(#sf3)" d="M18.413 10.473a.62.62 0 0 0-.411-.158H3.58c-.512 0-.77.58-.416.923l2.369 2.29c.111.103.257.16.41.163H20.42c.517 0 .77-.586.41-.928z"/><defs><linearGradient id="sf1" x1="3" x2="21.5" y1="55" y2="54.9" gradientUnits="userSpaceOnUse"><stop stop-color="#599db0"/><stop offset="1" stop-color="#47f8c3"/></linearGradient><linearGradient id="sf2" x1="3" x2="21.3" y1="9.2" y2="9" gradientUnits="userSpaceOnUse"><stop stop-color="#c44fe2"/><stop offset="1" stop-color="#73b0d0"/></linearGradient><linearGradient id="sf3" x1="4" x2="20.3" y1="12" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#778cbf"/><stop offset="1" stop-color="#5dcdc9"/></linearGradient></defs></g></svg> 0.05</div>
+          <div class="fb-label">SOL</div>
+        </div>
+        <div class="fee-btn" data-fee="0.1" onclick="selectEntryFee(this)">
+          <div class="fb-amount"><svg class="sol-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none"><path fill="url(#sf1)" d="M18.413 7.902a.62.62 0 0 1-.411.163H3.58c-.512 0-.77-.585-.416-.928l2.369-2.284a.6.6 0 0 1 .41-.169H20.42c.517 0 .77.59.41.935z"/><path fill="url(#sf2)" d="M18.413 19.158a.62.62 0 0 1-.411.158H3.58c-.512 0-.77-.58-.416-.923l2.369-2.29a.6.6 0 0 1 .41-.163H20.42c.517 0 .77.586.41.928z"/><path fill="url(#sf3)" d="M18.413 10.473a.62.62 0 0 0-.411-.158H3.58c-.512 0-.77.58-.416.923l2.369 2.29c.111.103.257.16.41.163H20.42c.517 0 .77-.586.41-.928z"/><defs><linearGradient id="sf1" x1="3" x2="21.5" y1="55" y2="54.9" gradientUnits="userSpaceOnUse"><stop stop-color="#599db0"/><stop offset="1" stop-color="#47f8c3"/></linearGradient><linearGradient id="sf2" x1="3" x2="21.3" y1="9.2" y2="9" gradientUnits="userSpaceOnUse"><stop stop-color="#c44fe2"/><stop offset="1" stop-color="#73b0d0"/></linearGradient><linearGradient id="sf3" x1="4" x2="20.3" y1="12" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#778cbf"/><stop offset="1" stop-color="#5dcdc9"/></linearGradient></defs></g></svg> 0.1</div>
+          <div class="fb-label">SOL</div>
+        </div>
+        <div class="fee-btn" data-fee="0.5" onclick="selectEntryFee(this)">
+          <div class="fb-amount"><svg class="sol-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none"><path fill="url(#sf1)" d="M18.413 7.902a.62.62 0 0 1-.411.163H3.58c-.512 0-.77-.585-.416-.928l2.369-2.284a.6.6 0 0 1 .41-.169H20.42c.517 0 .77.59.41.935z"/><path fill="url(#sf2)" d="M18.413 19.158a.62.62 0 0 1-.411.158H3.58c-.512 0-.77-.58-.416-.923l2.369-2.29a.6.6 0 0 1 .41-.163H20.42c.517 0 .77.586.41.928z"/><path fill="url(#sf3)" d="M18.413 10.473a.62.62 0 0 0-.411-.158H3.58c-.512 0-.77.58-.416.923l2.369 2.29c.111.103.257.16.41.163H20.42c.517 0 .77-.586.41-.928z"/><defs><linearGradient id="sf1" x1="3" x2="21.5" y1="55" y2="54.9" gradientUnits="userSpaceOnUse"><stop stop-color="#599db0"/><stop offset="1" stop-color="#47f8c3"/></linearGradient><linearGradient id="sf2" x1="3" x2="21.3" y1="9.2" y2="9" gradientUnits="userSpaceOnUse"><stop stop-color="#c44fe2"/><stop offset="1" stop-color="#73b0d0"/></linearGradient><linearGradient id="sf3" x1="4" x2="20.3" y1="12" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#778cbf"/><stop offset="1" stop-color="#5dcdc9"/></linearGradient></defs></g></svg> 0.5</div>
+          <div class="fb-label">SOL</div>
+        </div>
+      </div>
+      <input type="text" id="lobbyNameInput" placeholder="Lobby name (optional)" maxlength="30"
+        style="width:100%;padding:12px;border-radius:8px;border:2px solid #5c4a28;background:rgba(20,15,6,0.7);color:#f5e6c8;font-size:15px;font-family:'Nunito',sans-serif;outline:none;margin:8px 0;text-align:center;">
+      <button class="btn gold" onclick="doCreateLobby()">Create & Join</button>
+    </div>
+  </div>
+
+  <!-- IN-LOBBY WAITING ROOM -->
+  <div id="inLobbyScreen" class="screen-overlay hidden">
+    <button class="back-btn" id="leaveLobbyBtn" onclick="doLeaveLobby()">LEAVE</button>
+    <div class="punch-ascii" style="font-size:42px;">🥊</div>
+    <div class="screen-title" id="inLobbyTitle" style="font-size:26px;">Lobby</div>
+    <div class="screen-subtitle" id="inLobbyMode"></div>
+    <div style="display:flex;gap:40px;justify-content:center;margin:8px 0;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Bungee',cursive;color:#c87040;font-size:13px;margin-bottom:4px;letter-spacing:1px;">PUNCH TEAM</div>
+        <div id="team1Players" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"></div>
+      </div>
+      <div style="font-family:'Bungee',cursive;color:#5c4a28;font-size:22px;align-self:center;">VS</div>
+      <div>
+        <div style="font-family:'Bungee',cursive;color:#5088b0;font-size:13px;margin-bottom:4px;letter-spacing:1px;">LULU TEAM</div>
+        <div id="team2Players" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"></div>
+      </div>
+    </div>
+    <div id="inLobbyInfo" style="color:#b89a60;font-size:14px;margin:8px 0;">Waiting for players...</div>
+    <button class="btn" id="readyBtn" onclick="doReady()">Ready Up</button>
+    <div class="controls-info">
+      <kbd>WASD</kbd> / <kbd>Arrows</kbd> move &nbsp;|&nbsp;
+      <kbd>Space</kbd> / <kbd>Click</kbd> punch &nbsp;|&nbsp;
+      <kbd>Shift</kbd> dash<br>
+      <kbd>E</kbd> shield &nbsp;|&nbsp;
+      <kbd>Q</kbd> super punch (charges over time) &nbsp;|&nbsp;
+      <kbd>F</kbd> banana throw &nbsp;|&nbsp; aim
+    </div>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div id="countdownScreen" class="screen-overlay hidden">
+    <div class="screen-title" id="countdownText" style="font-size:80px;">3</div>
+    <div class="screen-subtitle">Get ready to brawl!</div>
+  </div>
+
+  <!-- ROUND END -->
+  <div id="roundEndScreen" class="screen-overlay hidden">
+    <div class="punch-ascii" id="winnerEmoji">🍌</div>
+    <div class="screen-title" id="winnerTitle" style="font-size:36px;">Winner!</div>
+    <div class="screen-subtitle" id="winnerSubtitle">Next round starting...</div>
+    <div id="scoreboard" style="margin:10px 0;"></div>
+  </div>
+
+  <!-- MATCH END (Best of 5 complete) -->
+  <div id="matchEndScreen" class="screen-overlay hidden">
+    <div class="match-end-box">
+      <div class="match-emoji" style="font-size:64px;">🏆</div>
+      <div class="screen-title match-title" style="font-size:36px;">Match Over!</div>
+      <div class="screen-subtitle match-subtitle">Final Score</div>
+      <div class="match-prize"></div>
+      <div class="jungle-divider"></div>
+      <div class="match-scoreboard" style="margin:14px 0;"></div>
+    </div>
+  </div>
+
+  <!-- DEPOSIT SCREEN -->
+  <div id="depositScreen" class="screen-overlay hidden">
+    <button class="back-btn" onclick="stopDepositPoll();showMenu()">BACK</button>
+    <div class="deposit-box">
+      <div style="font-size:42px;margin-bottom:4px;">💰</div>
+      <div style="font-family:'Bungee',cursive;font-size:20px;color:#a0cc60;margin-bottom:4px;">Deposit SOL</div>
+      <div style="color:#8a7650;font-size:13px;margin-bottom:6px;">Send real SOL to your deposit address</div>
+      <div class="jungle-divider"></div>
+      <div style="color:#b89a60;font-size:14px;margin:10px 0;">Current Balance: <span style="color:#a0cc60;font-family:'Bungee',cursive;" id="depositBalance">0.0000</span> SOL</div>
+      <div style="font-family:'Bungee',cursive;font-size:10px;color:#8a7650;letter-spacing:1px;margin-top:10px;">YOUR DEPOSIT ADDRESS</div>
+      <div style="position:relative;">
+        <div class="wallet-key" id="depositWalletAddr" style="color:#a0cc60;cursor:pointer;font-size:13px;padding:12px;" onclick="navigator.clipboard.writeText(this.textContent);document.getElementById('depositCopyMsg').textContent='Copied!';setTimeout(()=>document.getElementById('depositCopyMsg').textContent='Click to copy',1500);">Loading...</div>
+        <div id="depositCopyMsg" style="color:#8a7650;font-size:10px;margin-top:2px;">Click to copy</div>
+      </div>
+      <div id="depositOnChain" style="color:#f5c842;font-size:12px;font-family:'Bungee',cursive;margin:4px 0;"></div>
+      <div style="color:#d4903a;font-size:11px;margin:8px 0;line-height:1.5;">Send SOL from any wallet to the address above.<br>Funds are automatically swept to the game treasury.</div>
+      <div class="jungle-divider"></div>
+      <button class="btn jungle" onclick="doDepositCheck()" style="margin-top:14px;">Check Deposit</button>
+      <div class="deposit-status" id="depositStatus"></div>
+      <div style="color:#8a7650;font-size:11px;margin-top:12px;">Sent SOL? Click "Check Deposit" to detect and credit your balance.</div>
+    </div>
+  </div>
+
+  <!-- WITHDRAW SCREEN -->
+  <div id="withdrawScreen" class="screen-overlay hidden">
+    <button class="back-btn" onclick="showMenu()">BACK</button>
+    <div class="withdraw-box">
+      <div style="font-size:42px;margin-bottom:4px;">💸</div>
+      <div style="font-family:'Bungee',cursive;font-size:20px;color:#d47050;margin-bottom:4px;">Withdraw SOL</div>
+      <div style="color:#8a7650;font-size:13px;margin-bottom:6px;">Withdraw from your game balance to your wallet</div>
+      <div class="jungle-divider"></div>
+      <div style="color:#b89a60;font-size:14px;margin:10px 0;">Current Balance: <span style="color:#a0cc60;font-family:'Bungee',cursive;" id="withdrawBalance">0.0000</span> SOL</div>
+      <input type="number" id="withdrawAmount" placeholder="Amount in SOL" step="0.01" min="0.01">
+      <div class="quick-amounts">
+        <div class="quick-amt" onclick="document.getElementById('withdrawAmount').value='0.05'">0.05</div>
+        <div class="quick-amt" onclick="document.getElementById('withdrawAmount').value='0.1'">0.1</div>
+        <div class="quick-amt" onclick="document.getElementById('withdrawAmount').value='0.5'">0.5</div>
+        <div class="quick-amt" onclick="document.getElementById('withdrawAmount').value='1'">1.0</div>
+      </div>
+      <button class="btn danger" onclick="doWithdraw()">Withdraw</button>
+      <div class="withdraw-status" id="withdrawStatus"></div>
+      <div style="color:#8a7650;font-size:11px;margin-top:12px;">SOL will be sent from the treasury to your wallet address.</div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboardScreen" class="screen-overlay hidden">
+    <button class="back-btn" onclick="showMenu()">BACK</button>
+    <div style="font-size:42px;margin-bottom:4px;">🏆</div>
+    <div class="screen-title" style="font-size:28px;">Leaderboard</div>
+    <div class="screen-subtitle">Top 3 monkeys win <b style="color:#a0cc60">1 SOL</b> each!</div>
+    <div id="leaderboardContent" style="width:100%;display:flex;justify-content:center;"></div>
+  </div>
+
+  <!-- GAME HISTORY -->
+  <div id="historyScreen" class="screen-overlay hidden">
+    <button class="back-btn" onclick="showMenu()">BACK</button>
+    <div style="font-size:42px;margin-bottom:4px;">📜</div>
+    <div class="screen-title" style="font-size:28px;">Battle History</div>
+    <div id="historyContent" style="width:100%;display:flex;justify-content:center;"></div>
+  </div>
+</div>
+
+<script src="/client.js"></script>
+</body>
+</html>
