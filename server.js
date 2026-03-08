@@ -835,6 +835,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.url === '/360_F_665896888_36LYmsSQ3duCkSvcBSEq1Ev7upXvh01k.jpg') {
+    fs.readFile(path.join(__dirname, '360_F_665896888_36LYmsSQ3duCkSvcBSEq1Ev7upXvh01k.jpg'), (err, data) => {
+      if (err) { res.writeHead(500); res.end('Error'); return; }
+      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+      res.end(data);
+    });
+    return;
+  }
+
   // API: Signup
   if (req.url === '/api/signup' && req.method === 'POST') {
     let body = '';

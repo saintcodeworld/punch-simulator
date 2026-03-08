@@ -3,7 +3,7 @@
 // =====================================================
 // Set this to your Render backend URL (no trailing slash)
 const SERVER_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? ''  // empty = same origin (local dev)
+  ? 'http://localhost:3000'  // local dev
   : 'https://punch-simulator.onrender.com'; // Render backend
 
 const canvas = document.getElementById('gameCanvas');
