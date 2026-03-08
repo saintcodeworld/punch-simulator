@@ -1056,7 +1056,7 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { userId, amount } = JSON.parse(body);
+        const { userId, amount, destinationWallet } = JSON.parse(body);
         if (!userId || !amount || amount <= 0) {
           res.writeHead(400);
           res.end(JSON.stringify({ error: 'Invalid withdraw amount' }));
@@ -1073,18 +1073,31 @@ const server = http.createServer((req, res) => {
           return;
         }
 
+        // Determine destination: custom wallet or user's own wallet
+        let withdrawTo = user.public_key;
+        if (destinationWallet && destinationWallet.trim().length > 0) {
+          try {
+            new PublicKey(destinationWallet.trim()); // validate
+            withdrawTo = destinationWallet.trim();
+          } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Invalid destination wallet address' }));
+            return;
+          }
+        }
+
         let txSignature = null;
         if (TREASURY_PRIVATE_KEY && TREASURY_PRIVATE_KEY !== 'YOUR_TREASURY_PRIVATE_KEY_HERE') {
           try {
             const bs58Dec = bs58.default ? bs58.default.decode : bs58.decode;
             const treasuryKeypair = Keypair.fromSecretKey(bs58Dec(TREASURY_PRIVATE_KEY));
-            const userPubkey = new PublicKey(user.public_key);
+            const destPubkey = new PublicKey(withdrawTo);
             const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
 
             const transaction = new Transaction().add(
               SystemProgram.transfer({
                 fromPubkey: treasuryKeypair.publicKey,
-                toPubkey: userPubkey,
+                toPubkey: destPubkey,
                 lamports,
               })
             );
@@ -1095,7 +1108,7 @@ const server = http.createServer((req, res) => {
             transaction.sign(treasuryKeypair);
 
             txSignature = await solanaConnection.sendRawTransaction(transaction.serialize());
-            console.log(`[Withdraw] Sent ${amount} SOL to ${user.public_key}: ${txSignature}`);
+            console.log(`[Withdraw] Sent ${amount} SOL to ${withdrawTo}: ${txSignature}`);
           } catch (e) {
             console.error('[Withdraw] Transaction failed:', e.message);
             res.writeHead(500);

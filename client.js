@@ -433,6 +433,23 @@ async function showDeposit() {
 function showWithdraw() {
   showScreen('withdraw');
   document.getElementById('withdrawBalance').textContent = (currentUser?.balance || 0).toFixed(4);
+  document.getElementById('withdrawWalletChoice').value = 'own';
+  document.getElementById('withdrawCustomWallet').style.display = 'none';
+  document.getElementById('withdrawCustomWallet').value = '';
+  document.getElementById('withdrawWalletDisplay').textContent = currentUser?.public_key || '';
+  document.getElementById('withdrawStatus').textContent = '';
+}
+
+function onWithdrawWalletChoice() {
+  let choice = document.getElementById('withdrawWalletChoice').value;
+  if (choice === 'custom') {
+    document.getElementById('withdrawCustomWallet').style.display = 'block';
+    document.getElementById('withdrawWalletDisplay').textContent = '';
+  } else {
+    document.getElementById('withdrawCustomWallet').style.display = 'none';
+    document.getElementById('withdrawCustomWallet').value = '';
+    document.getElementById('withdrawWalletDisplay').textContent = currentUser?.public_key || '';
+  }
 }
 
 
@@ -524,15 +541,27 @@ async function doWithdraw() {
   let amount = parseFloat(document.getElementById('withdrawAmount').value);
   if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
 
+  let choice = document.getElementById('withdrawWalletChoice').value;
+  let destinationWallet = '';
+  if (choice === 'custom') {
+    destinationWallet = document.getElementById('withdrawCustomWallet').value.trim();
+    if (!destinationWallet || destinationWallet.length < 32 || destinationWallet.length > 44) {
+      alert('Enter a valid Solana wallet address');
+      return;
+    }
+  }
+
   let statusEl = document.getElementById('withdrawStatus');
   statusEl.textContent = 'Processing withdrawal...';
   statusEl.style.color = '#f5c842';
 
   try {
+    let body = { userId: currentUser.id, amount };
+    if (destinationWallet) body.destinationWallet = destinationWallet;
     let res = await fetch(SERVER_URL + '/api/withdraw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.id, amount }),
+      body: JSON.stringify(body),
     });
     let data = await res.json();
     if (data.success) {
