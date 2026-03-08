@@ -1,6 +1,11 @@
 // =====================================================
 //  PUNCH SIMULATOR PvP — MULTIPLAYER CLIENT
 // =====================================================
+// Set this to your Render backend URL (no trailing slash)
+const SERVER_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? ''  // empty = same origin (local dev)
+  : 'https://punch-simulator.onrender.com'; // Render backend
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
@@ -178,7 +183,7 @@ async function doAuth() {
 
   try {
     let url = authMode === 'signup' ? '/api/signup' : '/api/login';
-    let res = await fetch(url, {
+    let res = await fetch(SERVER_URL + url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username }),
@@ -405,7 +410,7 @@ async function showDeposit() {
 
   // Fetch user's internal deposit address
   try {
-    let res = await fetch('/api/deposit-address', {
+    let res = await fetch(SERVER_URL + '/api/deposit-address', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: currentUser.id }),
@@ -444,7 +449,7 @@ function startDepositPoll() {
       return;
     }
     try {
-      let res = await fetch('/api/deposit-check', {
+      let res = await fetch(SERVER_URL + '/api/deposit-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser.id }),
@@ -482,19 +487,17 @@ async function doDepositCheck() {
   statusEl.textContent = 'Checking for deposit...';
   statusEl.style.color = '#f5c842';
   try {
-    let res = await fetch('/api/deposit-check', {
+    let res = await fetch(SERVER_URL + '/api/deposit-check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: currentUser.id }),
     });
+    let data = await res.json();
     if (!res.ok) {
-      let errText = await res.text();
-      try { errText = JSON.parse(errText).error || errText; } catch (_) {}
-      statusEl.textContent = 'Error: ' + errText;
+      statusEl.textContent = 'Error: ' + (data.error || 'Check failed');
       statusEl.style.color = '#ff5555';
       return;
     }
-    let data = await res.json();
     if (data.swept) {
       currentUser.balance = data.balance;
       localStorage.setItem('punchUser', JSON.stringify(currentUser));
@@ -526,7 +529,7 @@ async function doWithdraw() {
   statusEl.style.color = '#f5c842';
 
   try {
-    let res = await fetch('/api/withdraw', {
+    let res = await fetch(SERVER_URL + '/api/withdraw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: currentUser.id, amount }),
@@ -557,7 +560,7 @@ async function showLeaderboard() {
   showScreen('leaderboard');
   document.getElementById('leaderboardContent').innerHTML = '<div style="color:#aaa;padding:20px;">Loading...</div>';
   try {
-    let res = await fetch('/api/leaderboard');
+    let res = await fetch(SERVER_URL + '/api/leaderboard');
     let data = await res.json();
     let lb = data.leaderboard || [];
     if (lb.length === 0) {
@@ -587,7 +590,7 @@ async function showHistory() {
   showScreen('history');
   document.getElementById('historyContent').innerHTML = '<div style="color:#aaa;padding:20px;">Loading...</div>';
   try {
-    let res = await fetch(`/api/history/${currentUser.id}`);
+    let res = await fetch(`${SERVER_URL}/api/history/${currentUser.id}`);
     let data = await res.json();
     let hist = data.history || [];
     if (hist.length === 0) {
@@ -612,9 +615,20 @@ async function showHistory() {
 //  WEBSOCKET CONNECTION
 // =====================================================
 function connect() {
-  let host = window.location.hostname || 'localhost';
-  let port = window.location.port || '3000';
-  ws = new WebSocket(`ws://${host}:${port}`);
+  let wsUrl;
+  if (SERVER_URL) {
+    // Production: connect to external server via wss
+    let url = new URL(SERVER_URL);
+    let protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsUrl = `${protocol}//${url.host}`;
+  } else {
+    // Local dev: same origin
+    let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let host = window.location.hostname || 'localhost';
+    let port = window.location.port || '3000';
+    wsUrl = `${protocol}//${host}:${port}`;
+  }
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     connected = true;
@@ -691,7 +705,7 @@ function send(data) {
 async function refreshUserData() {
   if (!currentUser) return;
   try {
-    let res = await fetch('/api/login', {
+    let res = await fetch(SERVER_URL + '/api/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentUser.username }),
     });

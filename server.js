@@ -37,7 +37,7 @@ console.log(`[PumpFun Config] SOLANA_RPC_URL: ${SOLANA_RPC_URL}`);
 // =====================================================
 //  CONFIG
 // =====================================================
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const TICK_RATE = 60;
 const ARENA_W = 1600;
 const ARENA_H = 1000;
@@ -796,7 +796,13 @@ function broadcastLobbyList() {
 // =====================================================
 const server = http.createServer((req, res) => {
   // CORS headers for Supabase
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = ['https://www.punchvslulu.fun', 'https://punchvslulu.fun', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || !origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
